@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Data (large files)
+data/parquet_spx/*.csv
+!data/parquet_spx/.gitkeep
+
+# Output
+output/
+results/
+
+# Notebooks checkpoints
+.ipynb_checkpoints/

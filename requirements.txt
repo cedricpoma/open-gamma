@@ -1,0 +1,14 @@
+pandas
+numpy
+matplotlib
+pyarrow
+fastparquet
+scipy
+seaborn
+mibian
+plotly
+requests
+alpha_vantage
+tastytrade
+flask
+flask-cors
