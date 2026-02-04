@@ -130,7 +130,7 @@
             </template>
         </div>
 
-        <!-- Dashboard Grid -->
+        <!-- Dashboard Grid - Gamma Exposure (left) + Net GEX Strike (right, taller) -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
             <!-- Gamma Exposure -->
@@ -149,8 +149,8 @@
                 <div id="gammaPlot" class="flex-grow w-full"></div>
             </div>
 
-            <!-- Net GEX Strike -->
-            <div class="chart-container flex flex-col">
+            <!-- Net GEX Strike - Right side, increased height -->
+            <div class="chart-container flex flex-col" style="height: 500px;">
                 <div class="card-header">
                     <div class="flex items-center gap-2">
                         <i data-lucide="bar-chart-3" class="w-3 h-3 text-pink-400"></i>
@@ -164,6 +164,10 @@
                 </div>
                 <div id="strikePlot" class="flex-grow w-full"></div>
             </div>
+        </div>
+
+        <!-- Other Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
             <!-- Charm Net -->
             <div class="chart-container flex flex-col">
@@ -559,9 +563,26 @@
                         shapes: [{
                             type: 'line', x0: 0, x1: 1, y0: spotPrice, y1: spotPrice,
                             xref: 'paper', yref: 'y',
-                            line: { color: 'white', width: 2, dash: 'dash' }
+                            line: { color: 'rgba(255, 255, 255, 0.15)', width: 1, dash: 'dot' },
+                            layer: 'below'
                         }],
-                        annotations: cappedAnnotations
+                        annotations: [
+                            ...cappedAnnotations,
+                            {
+                                x: 0, xref: 'paper', xanchor: 'right',
+                                y: spotPrice, yref: 'y',
+                                text: 'SPOT',
+                                showarrow: true, arrowhead: 0,
+                                ax: -10, ay: 0,
+                                font: { color: 'rgba(255, 255, 255, 0.5)', size: 9 }
+                            }
+                        ],
+                        hovermode: 'closest',
+                        hoverlabel: {
+                            bgcolor: 'white',
+                            font: { color: '#0f172a', size: 12 },
+                            bordercolor: '#334155'
+                        }
                     });
 
                     // 3. Charm
