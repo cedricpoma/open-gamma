@@ -141,6 +141,65 @@ def get_engine_data():
             except:
                 pass
 
+    # 7. IV Stats (ATM Implied Volatility)
+    atm_range = 0.02  # ±2% from spot
+    atm_mask = (df['Strike'] >= engine.spot_price * (1 - atm_range)) & (df['Strike'] <= engine.spot_price * (1 + atm_range))
+    atm_df = df[atm_mask]
+    
+    # OI-weighted average IV near the money
+    call_oi_sum = atm_df['Call OI'].sum()
+    put_oi_sum = atm_df['Put OI'].sum()
+    
+    atm_call_iv = float((atm_df['Call IV'] * atm_df['Call OI']).sum() / call_oi_sum) if call_oi_sum > 0 else 0.0
+    atm_put_iv = float((atm_df['Put IV'] * atm_df['Put OI']).sum() / put_oi_sum) if put_oi_sum > 0 else 0.0
+    atm_iv = (atm_call_iv + atm_put_iv) / 2.0 if (atm_call_iv > 0 and atm_put_iv > 0) else max(atm_call_iv, atm_put_iv)
+    
+    # IV Skew: difference between OTM Put IV (below spot) and OTM Call IV (above spot)
+    otm_put_mask = (df['Strike'] < engine.spot_price * 0.98) & (df['Strike'] >= engine.spot_price * 0.93) & (df['Put IV'] > 0)
+    otm_call_mask = (df['Strike'] > engine.spot_price * 1.02) & (df['Strike'] <= engine.spot_price * 1.07) & (df['Call IV'] > 0)
+    
+    otm_put_iv = float(df.loc[otm_put_mask, 'Put IV'].mean()) if otm_put_mask.any() else 0.0
+    otm_call_iv = float(df.loc[otm_call_mask, 'Call IV'].mean()) if otm_call_mask.any() else 0.0
+    iv_skew = otm_put_iv - otm_call_iv
+    
+    iv_stats = {
+        "atm_iv": atm_iv,
+        "call_iv_mean": atm_call_iv,
+        "put_iv_mean": atm_put_iv,
+        "skew": iv_skew
+    }
+    
+    # 8. IV Smile (Call IV & Put IV by Strike)
+    smile_mask = (strike_summary['Strike'] >= engine.spot_price * 0.93) & (strike_summary['Strike'] <= engine.spot_price * 1.07)
+    smile_strikes = strike_summary.loc[smile_mask, 'Strike'].values
+    
+    iv_smile_data = []
+    for s in smile_strikes:
+        s_df = df[df['Strike'] == s]
+        c_iv = float(s_df.loc[s_df['Call IV'] > 0, 'Call IV'].mean()) if (s_df['Call IV'] > 0).any() else None
+        p_iv = float(s_df.loc[s_df['Put IV'] > 0, 'Put IV'].mean()) if (s_df['Put IV'] > 0).any() else None
+        if c_iv or p_iv:
+            iv_smile_data.append({"strike": float(s), "call_iv": c_iv, "put_iv": p_iv})
+    
+    # 9. IV Term Structure (Average IV by DTE)
+    iv_term = df[df['Call IV'] > 0].groupby('Expiration Date').agg({
+        'Call IV': 'mean',
+        'Put IV': 'mean',
+        'DTE': 'first'
+    }).reset_index()
+    iv_term = iv_term.sort_values('DTE')
+    iv_term['Avg IV'] = (iv_term['Call IV'] + iv_term['Put IV']) / 2.0
+    
+    iv_term_data = [
+        {
+            "expiration": row['Expiration Date'].strftime('%Y-%m-%d') if hasattr(row['Expiration Date'], 'strftime') else str(row['Expiration Date']),
+            "dte": int(row['DTE']),
+            "avg_iv": float(row['Avg IV']),
+            "call_iv": float(row['Call IV']),
+            "put_iv": float(row['Put IV'])
+        } for _, row in iv_term.iterrows()
+    ]
+
     return {
         "spot_price": float(engine.spot_price),
         "data_date": str(engine.data_date),
@@ -162,16 +221,7 @@ def get_engine_data():
         "speed_profile": {
             "net": [{"price": float(p), "speed": float(s)} for p, s in zip(engine.get_speed_profile()['levels'], engine.get_speed_profile()['net'])]
         },
-        "gamma_surface": {
-            "values": engine.get_surface_data()['gamma'].tolist(),
-            "times": engine.get_surface_data()['times'].tolist(),
-            "prices": engine.get_surface_data()['prices'].tolist()
-        },
-        "charm_surface": {
-            "values": engine.get_surface_data()['charm'].tolist(),
-            "times": engine.get_surface_data()['times'].tolist(),
-            "prices": engine.get_surface_data()['prices'].tolist()
-        },
+
         "strike_breakdown": strike_summary.to_dict(orient="records"),
         "gex_levels": gex_levels,
         "gex_by_expiration": [
@@ -184,7 +234,10 @@ def get_engine_data():
                 "put_oi": float(row['Put OI'])
             } for _, row in exp_summary.iterrows()
         ],
-        "oi_heatmap": oi_heatmap_data
+        "oi_heatmap": oi_heatmap_data,
+        "iv_stats": iv_stats,
+        "iv_smile": iv_smile_data,
+        "iv_term_structure": iv_term_data
     }
 
 @app.route('/api/status', methods=['GET'])
@@ -220,10 +273,10 @@ def fetch_live():
 
         # Run async function in a new loop
         async def run_fetch():
-            # 1. Authenticate
-            session = create_manual_session(os.getenv("TASTY_USERNAME"), os.getenv("TASTY_PASSWORD"))
+            # 1. Authenticate via OAuth2
+            session = create_manual_session()
             if not session:
-                 raise Exception("Authentication failed")
+                 raise Exception("Authentication failed - check OAuth2 credentials in .env")
 
             # 2. Fetch Chain
             chains = NestedOptionChain.get(session, TARGET_SYMBOL)

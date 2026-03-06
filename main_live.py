@@ -4,15 +4,13 @@ import asyncio
 import pandas as pd
 from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
-import httpx
-from httpx import Client, AsyncClient
+
 
 # Import from the installed library
 from tastytrade import Session, DXLinkStreamer
 from tastytrade.instruments import NestedOptionChain
 from tastytrade.dxfeed import Quote, Greeks, Summary
-from tastytrade import API_URL, API_VERSION
-from tastytrade.utils import now_in_new_york
+
 
 import logging
 
@@ -29,93 +27,53 @@ USERNAME = os.getenv("TASTY_USERNAME")
 PASSWORD = os.getenv("TASTY_PASSWORD")
 TARGET_SYMBOL = os.getenv("TARGET_SYMBOL", "SPX")
 
-def create_manual_session(username, password):
+def create_manual_session(username=None, password=None):
     """
-    Manually creates a Session object to bypass potential library auth issues,
-    using the method known to work in debug_auth_v2.py.
+    Creates a Session using OAuth2 (provider_secret + refresh_token).
+    Tastytrade has migrated to OAuth2 - username/password login is no longer supported.
+    
+    To set up OAuth2:
+    1. Go to https://my.tastytrade.com → Manage → My Profile → API
+    2. Create an OAuth application → get your client_secret
+    3. Create a "grant" → get your refresh_token
+    4. Add to .env: TASTY_PROVIDER_SECRET=<client_secret>
+                    TASTY_REFRESH_TOKEN=<refresh_token>
     """
-    print(f"[AUTH] Manual connection for {username}...")
+    provider_secret = os.getenv("TASTY_PROVIDER_SECRET", "")
+    refresh_token = os.getenv("TASTY_REFRESH_TOKEN", "")
+    
+    if not provider_secret or not refresh_token:
+        print("[ERROR] ============================================")
+        print("[ERROR] OAuth2 credentials missing!")
+        print("[ERROR] Tastytrade now requires OAuth2 authentication.")
+        print("[ERROR] Username/password login is no longer supported.")
+        print("[ERROR]")
+        print("[ERROR] To fix this:")
+        print("[ERROR] 1. Go to https://my.tastytrade.com")
+        print("[ERROR] 2. Navigate to: Manage -> My Profile -> API")
+        print("[ERROR] 3. Create an OAuth application -> copy client_secret")
+        print("[ERROR] 4. Create a 'grant' -> copy refresh_token")
+        print("[ERROR] 5. Add to your .env file:")
+        print("[ERROR]    TASTY_PROVIDER_SECRET=your_client_secret")
+        print("[ERROR]    TASTY_REFRESH_TOKEN=your_refresh_token")
+        print("[ERROR] ============================================")
+        return None
+    
+    print(f"[AUTH] Connecting via OAuth2...")
     try:
-        # 1. Manual HTTP Request (Known to work)
-        resp = httpx.post(
-            "https://api.tastyworks.com/sessions",
-            json={"login": username, "password": password, "remember-me": True},
-            headers={"Content-Type": "application/json", "Accept": "application/json"},
-            timeout=10
+        session = Session(
+            provider_secret=provider_secret,
+            refresh_token=refresh_token,
+            is_test=False
         )
-        
-        if resp.status_code != 201:
-            print(f"[ERROR] Manual Login Failed: {resp.status_code} - {resp.text}")
-            return None
-            
-        data = resp.json().get('data', {})
-        session_token = data.get('session-token')
-        
-        if not session_token:
-            print("[ERROR] No session-token returned.")
-            return None
-            
-        print("[AUTH] Token received. Hydrating tastytrade.Session object...")
-        
-        # 2. Hydrate the tastytrade Session object
-        # We bypass __init__ because it triggers its own login flow
-        session = Session.__new__(Session)
-        
-        # Set attributes expected by the library
-        session.session_token = session_token
-        session.base_url = API_URL
-        session.is_test = False
-        session.proxy = None
-        session.provider_secret = ""
-        session.refresh_token = data.get('remember-token', '')
-        
-        # Clients
-        headers = {
-            "Accept": "application/json", 
-            "Content-Type": "application/json",
-            "Authorization": f"{session_token}",
-            "Accept-Version": API_VERSION
-        }
-        
-        session.client = Client(base_url=API_URL, headers=headers)
-        session.sync_client = session.client
-        session.async_client = AsyncClient(base_url=API_URL, headers=headers)
-        # Some versions use a specific async client or request method, but usually 'client' is key.
-        # We'll mock/set what we can.
-        
-        # Use library method for streamer tokens if possible, or do it manually if that fails
-        # The library usually has methods like get_customer() which rely on the client.
-        
-        print("[AUTH] Validating Session and fetching Streamer tokens...")
-        try:
-            # We try to use the session to fetch streamer tokens. 
-            # If the session object is set up correctly, this internal library call should work.
-            # Introspecting the library: usually session.streamer_tokens or similar.
-            # But let's try the library's standard way to 'refresh_streamer_tokens' if it exists
-            # Or just fetch them manually and set them.
-            
-            # Manual fetch of streamer tokens to be safe
-            t_resp = session.client.get("/api-quote-tokens")
-            if t_resp.status_code == 200:
-                token_data = t_resp.json()['data']
-                # Depending on library version, we need to set these.
-                # DXLinkStreamer(session) uses session.streamer_token presumably.
-                # Let's inspect session object in a try/except or just set common props.
-                session.streamer_token = token_data.get('token')
-                session.dxlink_url = token_data.get('dxlink-url')
-                session.streamer_url = token_data.get('streamer-url') # confusing naming in API sometimes
-                
-                print(f"[SUCCESS] Streamer Token: {session.streamer_token[:10]}...")
-            else:
-                print(f"[WARN] Could not fetch streamer tokens: {t_resp.status_code}")
-                
-        except Exception as e:
-            print(f"[WARN] Error setting up streamer tokens: {e}")
-
+        print(f"[AUTH] OAuth2 session created successfully!")
+        print(f"[AUTH] Streamer token: {session.streamer_token[:10]}...")
         return session
 
     except Exception as e:
-        print(f"[CRITICAL] Manual session creation error: {e}")
+        print(f"[CRITICAL] OAuth2 session creation failed: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 async def fetch_and_update_dashboard():

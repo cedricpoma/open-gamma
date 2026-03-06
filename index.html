@@ -110,7 +110,7 @@
     <main class="p-4 max-w-full mx-auto space-y-3">
 
         <!-- Stats Row Compact -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
             <template x-for="stat in stats" :key="stat.label">
                 <div class="bg-[#1e293b] border border-white/5 rounded-xl p-3 shadow-sm relative group">
                     <div class="flex items-center justify-between">
@@ -130,26 +130,76 @@
             </template>
         </div>
 
-        <!-- Dashboard Grid - Gamma Exposure (left) + Net GEX Strike (right, taller) -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <!-- ============================================ -->
+        <!-- PRIMARY CHARTS (Most Used) -->
+        <!-- ============================================ -->
 
-            <!-- Gamma Exposure -->
-            <div class="chart-container flex flex-col">
-                <div class="card-header">
+        <!-- Historical Log Table + Net GEX by Strike -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <!-- Historical Stats Log (Left) -->
+            <div class="chart-container flex flex-col" style="height: 500px;">
+                <div class="card-header border-indigo-500/10">
                     <div class="flex items-center gap-2">
-                        <i data-lucide="trending-up" class="w-3 h-3 text-indigo-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">Gamma Exposure</h3>
+                        <i data-lucide="scroll-text" class="w-3 h-3 text-indigo-400"></i>
+                        <h3 class="font-bold text-xs uppercase tracking-wide">Session Log</h3>
                         <div class="tooltip tooltip-right sm:tooltip-bottom"
-                            data-tip="Mesure la sensibilité du Delta au prix. GEX+ stabilise le marché (vitesse constante), GEX- l'accélère (volatilité). Ex: GEX+ élevé = le prix a du mal à franchir les niveaux.">
+                            data-tip="Historique des snapshots de la session. Chaque refresh ajoute une ligne. Vanna Sq: Positif (🔵 Poudrière) = squeeze haussier si IV↓, cascade si IV↑. Négatif (🟠 Amortisseur) = freine les mouvements.">
                             <i data-lucide="info"
                                 class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
                         </div>
                     </div>
+                    <div class="text-[10px] mono opacity-40" x-text="history.length + ' snapshot(s)'"></div>
                 </div>
-                <div id="gammaPlot" class="flex-grow w-full"></div>
+                <div class="flex-grow overflow-auto">
+                    <table class="w-full text-[11px] mono">
+                        <thead class="sticky top-0 bg-[#1e293b] z-10">
+                            <tr class="text-slate-400 uppercase text-[9px] tracking-wider border-b border-white/10">
+                                <th class="py-2 px-2 text-left font-semibold">Time</th>
+                                <th class="py-2 px-2 text-right font-semibold">Spot</th>
+                                <th class="py-2 px-2 text-right font-semibold">0-Gamma</th>
+                                <th class="py-2 px-2 text-right font-semibold">Net GEX</th>
+                                <th class="py-2 px-2 text-right font-semibold">IV ATM</th>
+                                <th class="py-2 px-2 text-right font-semibold">Skew</th>
+                                <th class="py-2 px-2 text-right font-semibold">Vanna Sq.</th>
+                                <th class="py-2 px-2 text-right font-semibold">Charm</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(row, i) in [...history].reverse()" :key="i">
+                                <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                    <td class="py-1.5 px-2 text-slate-300" x-text="row.time"></td>
+                                    <td class="py-1.5 px-2 text-right text-white" x-text="row.spot"></td>
+                                    <td class="py-1.5 px-2 text-right text-emerald-400" x-text="row.zeroGamma"></td>
+                                    <td class="py-1.5 px-2 text-right font-bold"
+                                        :class="row.gexRaw >= 0 ? 'text-emerald-400' : 'text-red-400'" x-text="row.gex">
+                                    </td>
+                                    <td class="py-1.5 px-2 text-right text-amber-400" x-text="row.iv"></td>
+                                    <td class="py-1.5 px-2 text-right"
+                                        :class="row.skewRaw > 0 ? 'text-red-400' : 'text-emerald-400'"
+                                        x-text="row.skew"></td>
+                                    <td class="py-1.5 px-2 text-right font-bold"
+                                        :class="row.vannaRaw > 0 ? 'text-blue-400' : 'text-orange-400'">
+                                        <span x-text="row.vanna"></span>
+                                        <span class="text-[8px] opacity-60 ml-0.5"
+                                            x-text="row.vannaRaw > 0 ? '⚡' : '🛡️'"></span>
+                                    </td>
+                                    <td class="py-1.5 px-2 text-right"
+                                        :class="row.charmRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'"
+                                        x-text="row.charm"></td>
+                                </tr>
+                            </template>
+                            <template x-if="history.length === 0">
+                                <tr>
+                                    <td colspan="8" class="py-8 text-center text-slate-500 italic text-xs">Aucun
+                                        snapshot — Cliquez Actualiser pour commencer</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <!-- Net GEX Strike - Right side, increased height -->
+            <!-- Net GEX Strike Chart (Right) -->
             <div class="chart-container flex flex-col" style="height: 500px;">
                 <div class="card-header">
                     <div class="flex items-center gap-2">
@@ -166,126 +216,7 @@
             </div>
         </div>
 
-        <!-- Other Charts Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-
-            <!-- Charm Net -->
-            <div class="chart-container flex flex-col">
-                <div class="card-header">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="timer" class="w-3 h-3 text-emerald-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">Net Charm Decay</h3>
-                        <div class="tooltip tooltip-right sm:tooltip-bottom"
-                            data-tip="Impact du temps sur le Delta. Le Charm force les market makers à ajuster leurs hedges même si le prix ne bouge pas. Ex: Pression vendeuse naturelle à l'approche de l'expiration.">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                </div>
-                <div id="charmPlot" class="flex-grow w-full"></div>
-            </div>
-
-            <!-- Charm Call vs Put -->
-            <div class="chart-container flex flex-col">
-                <div class="card-header">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="git-branch" class="w-3 h-3 text-purple-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">Call vs Put Charm</h3>
-                        <div class="tooltip tooltip-left sm:tooltip-bottom"
-                            data-tip="Compare l'érosion temporelle des Calls et Puts. Permet de voir de quel côté (Bull ou Bear) la pression de re-hedging est la plus forte aujourd'hui.">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                </div>
-                <div id="charmComparePlot" class="flex-grow w-full"></div>
-            </div>
-
-            <!-- Gamma Surface -->
-            <div class="chart-container flex flex-col lg:col-span-1">
-                <div class="card-header">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="waves" class="w-3 h-3 text-indigo-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">Gamma Surface</h3>
-                        <div class="tooltip tooltip-right sm:tooltip-bottom"
-                            data-tip="Projection du Gamma sur toute la journée. Montre comment les zones de support s'étendent ou se contractent d'ici la clôture de 16h00 (ET).">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                    <div class="text-[10px] mono opacity-60">9:30 AM → 4:00 PM</div>
-                </div>
-                <div id="gammaHeatmap" class="flex-grow w-full"></div>
-            </div>
-
-            <!-- Charm Surface -->
-            <div class="chart-container flex flex-col lg:col-span-1">
-                <div class="card-header">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="layers" class="w-3 h-3 text-orange-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">Charm Surface</h3>
-                        <div class="tooltip tooltip-left sm:tooltip-bottom"
-                            data-tip="Évolution de la pression temporelle (Charm) sur la journée. Identifie les moments précis où les hedges devront être ajustés le plus violemment.">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                    <div class="text-[10px] mono opacity-60">9:30 AM → 4:00 PM</div>
-                </div>
-                <div id="charmHeatmap" class="flex-grow w-full"></div>
-            </div>
-
-        </div>
-
-        <!-- Advanced Greeks Row -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pb-8">
-            <div class="chart-container flex flex-col">
-                <div class="card-header border-amber-500/10">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="thermometer" class="w-3 h-3 text-amber-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">Vanna Exposure</h3>
-                        <div class="tooltip tooltip-right sm:tooltip-bottom"
-                            data-tip="Sensibilité du Delta à la Volatilité (IV). Vanna+ = Le hedge augmente si la volatilité monte. Crucial lors de changements brutaux de sentiment.">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                </div>
-                <div id="vannaPlot" class="flex-grow w-full"></div>
-            </div>
-
-            <div class="chart-container flex flex-col">
-                <div class="card-header border-rose-500/10">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="target" class="w-3 h-3 text-rose-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">Delta Overboard</h3>
-                        <div class="tooltip tooltip-bottom"
-                            data-tip="Positionnement Delta total des market makers. Un score extrême peut signaler une zone de 'surchauffe' où le marché pourrait se retourner pour évacuer la pression.">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                </div>
-                <div id="deltaPlot" class="flex-grow w-full"></div>
-            </div>
-
-            <div class="chart-container flex flex-col">
-                <div class="card-header border-cyan-500/10">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="gauge" class="w-3 h-3 text-cyan-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">Gamma Speed</h3>
-                        <div class="tooltip tooltip-left sm:tooltip-top"
-                            data-tip="Le Gamma du Gamma. Mesure la vitesse à laquelle l'exposition Gamma change. Un pic ici indique un danger de 'Gamma Squeeze' imminent.">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                </div>
-                <div id="speedPlot" class="flex-grow w-full"></div>
-            </div>
-        </div>
-
-        <!-- NEW: Key Levels & Analysis Row -->
+        <!-- Key Levels & Call vs Put GEX -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
             <!-- GEX Levels (Support/Resistance) -->
@@ -321,7 +252,7 @@
             </div>
         </div>
 
-        <!-- NEW: Expiration & OI Analysis Row -->
+        <!-- Expiration & Put/Call Ratio -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
             <!-- GEX by Expiration -->
@@ -357,8 +288,44 @@
             </div>
         </div>
 
-        <!-- NEW: OI Heatmap (Full Width) -->
-        <div class="grid grid-cols-1 gap-3 pb-8">
+        <!-- IV Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+
+            <!-- IV Smile / Skew -->
+            <div class="chart-container flex flex-col">
+                <div class="card-header border-amber-500/10">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="mountain-snow" class="w-3 h-3 text-amber-400"></i>
+                        <h3 class="font-bold text-xs uppercase tracking-wide">IV Smile / Skew</h3>
+                        <div class="tooltip tooltip-right sm:tooltip-bottom"
+                            data-tip="Courbe de volatilité implicite par strike. La forme en sourire (smile) ou en biais (skew) révèle la prime de risque. Un skew prononcé = le marché paie cher pour se protéger à la baisse.">
+                            <i data-lucide="info"
+                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
+                        </div>
+                    </div>
+                </div>
+                <div id="ivSmilePlot" class="flex-grow w-full"></div>
+            </div>
+
+            <!-- IV Term Structure -->
+            <div class="chart-container flex flex-col">
+                <div class="card-header border-teal-500/10">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="calendar-clock" class="w-3 h-3 text-teal-400"></i>
+                        <h3 class="font-bold text-xs uppercase tracking-wide">IV Term Structure</h3>
+                        <div class="tooltip tooltip-left sm:tooltip-bottom"
+                            data-tip="Structure par terme de la volatilité implicite par expiration. Normal = croissante (contango). Inversée = décroissante (backwardation) = stress de marché imminent.">
+                            <i data-lucide="info"
+                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
+                        </div>
+                    </div>
+                </div>
+                <div id="ivTermPlot" class="flex-grow w-full"></div>
+            </div>
+        </div>
+
+        <!-- OI Heatmap (Full Width) -->
+        <div class="grid grid-cols-1 gap-3">
             <div class="chart-container flex flex-col" style="height: 300px;">
                 <div class="card-header border-yellow-500/10">
                     <div class="flex items-center gap-2">
@@ -376,6 +343,124 @@
             </div>
         </div>
 
+        <!-- ============================================ -->
+        <!-- ADVANCED GREEKS (Collapsible, Less Used) -->
+        <!-- ============================================ -->
+        <div x-data="{ showAdvanced: false }" class="mt-4">
+            <button @click="showAdvanced = !showAdvanced"
+                class="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg border border-white/10 bg-[#1e293b] hover:bg-[#2d3a4f] transition-colors text-sm text-slate-400 hover:text-white">
+                <i data-lucide="chevron-down" class="w-4 h-4 transition-transform"
+                    :class="showAdvanced ? 'rotate-180' : ''"></i>
+                <span
+                    x-text="showAdvanced ? 'Masquer les Greeks Avancés' : 'Afficher les Greeks Avancés (Gamma, Charm, Vanna, Delta, Speed)'"></span>
+            </button>
+
+            <div x-show="showAdvanced" x-transition class="space-y-3 mt-3">
+
+                <!-- Gamma Exposure + Charm Net -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <!-- Gamma Exposure -->
+                    <div class="chart-container flex flex-col">
+                        <div class="card-header">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="trending-up" class="w-3 h-3 text-indigo-400"></i>
+                                <h3 class="font-bold text-xs uppercase tracking-wide">Gamma Exposure</h3>
+                                <div class="tooltip tooltip-right sm:tooltip-bottom"
+                                    data-tip="Mesure la sensibilité du Delta au prix. GEX+ stabilise le marché (vitesse constante), GEX- l'accélère (volatilité). Ex: GEX+ élevé = le prix a du mal à franchir les niveaux.">
+                                    <i data-lucide="info"
+                                        class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="gammaPlot" class="flex-grow w-full"></div>
+                    </div>
+
+                    <!-- Charm Net -->
+                    <div class="chart-container flex flex-col">
+                        <div class="card-header">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="timer" class="w-3 h-3 text-emerald-400"></i>
+                                <h3 class="font-bold text-xs uppercase tracking-wide">Net Charm Decay</h3>
+                                <div class="tooltip tooltip-right sm:tooltip-bottom"
+                                    data-tip="Impact du temps sur le Delta. Le Charm force les market makers à ajuster leurs hedges même si le prix ne bouge pas. Ex: Pression vendeuse naturelle à l'approche de l'expiration.">
+                                    <i data-lucide="info"
+                                        class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="charmPlot" class="flex-grow w-full"></div>
+                    </div>
+                </div>
+
+                <!-- Call vs Put Charm (standalone) -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div class="chart-container flex flex-col">
+                        <div class="card-header">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="git-branch" class="w-3 h-3 text-purple-400"></i>
+                                <h3 class="font-bold text-xs uppercase tracking-wide">Call vs Put Charm</h3>
+                                <div class="tooltip tooltip-left sm:tooltip-bottom"
+                                    data-tip="Compare l'érosion temporelle des Calls et Puts. Permet de voir de quel côté (Bull ou Bear) la pression de re-hedging est la plus forte aujourd'hui.">
+                                    <i data-lucide="info"
+                                        class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="charmComparePlot" class="flex-grow w-full"></div>
+                    </div>
+                </div>
+
+                <!-- Vanna, Delta, Speed Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pb-8">
+                    <div class="chart-container flex flex-col">
+                        <div class="card-header border-amber-500/10">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="thermometer" class="w-3 h-3 text-amber-400"></i>
+                                <h3 class="font-bold text-xs uppercase tracking-wide">Vanna Exposure</h3>
+                                <div class="tooltip tooltip-right sm:tooltip-bottom"
+                                    data-tip="Sensibilité du Delta à la Volatilité (IV). Vanna+ = Le hedge augmente si la volatilité monte. Crucial lors de changements brutaux de sentiment.">
+                                    <i data-lucide="info"
+                                        class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="vannaPlot" class="flex-grow w-full"></div>
+                    </div>
+
+                    <div class="chart-container flex flex-col">
+                        <div class="card-header border-rose-500/10">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="target" class="w-3 h-3 text-rose-400"></i>
+                                <h3 class="font-bold text-xs uppercase tracking-wide">Delta Overboard</h3>
+                                <div class="tooltip tooltip-bottom"
+                                    data-tip="Positionnement Delta total des market makers. Un score extrême peut signaler une zone de 'surchauffe' où le marché pourrait se retourner pour évacuer la pression.">
+                                    <i data-lucide="info"
+                                        class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="deltaPlot" class="flex-grow w-full"></div>
+                    </div>
+
+                    <div class="chart-container flex flex-col">
+                        <div class="card-header border-cyan-500/10">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="gauge" class="w-3 h-3 text-cyan-400"></i>
+                                <h3 class="font-bold text-xs uppercase tracking-wide">Gamma Speed</h3>
+                                <div class="tooltip tooltip-left sm:tooltip-top"
+                                    data-tip="Le Gamma du Gamma. Mesure la vitesse à laquelle l'exposition Gamma change. Un pic ici indique un danger de 'Gamma Squeeze' imminent.">
+                                    <i data-lucide="info"
+                                        class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="speedPlot" class="flex-grow w-full"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -385,10 +470,12 @@
                 loading: false,
                 error: false,
                 errorMsg: '',
+                history: [],
                 stats: [
                     { label: 'SPX Spot', value: '--', desc: 'Live Quote', tooltip: 'Prix actuel de l\'indice S&P 500 utilisé pour les calculs d\'exposition.' },
                     { label: 'Zero Gamma', value: '--', desc: 'Flip Level', color: 'text-emerald-400', tooltip: 'Le niveau où l\'exposition nette passe de positive à négative. Souvent une zone de pivot majeure.' },
                     { label: 'Net GEX', value: '--', desc: 'Total Exposure', color: 'text-indigo-400', tooltip: 'Exposition Gamma totale. >0: Stabilise le marché (les MM achètent les baisses). <0: Accélère le marché (les MM vendent les baisses).' },
+                    { label: 'IV ATM', value: '--', desc: 'Implied Vol', color: 'text-amber-400', tooltip: 'Volatilité Implicite moyenne ATM pondérée par l\'OI. Mesure la volatilité attendue par le marché. Skew = différence entre IV Put OTM et IV Call OTM.' },
                     { label: 'Last Update', value: '--', desc: 'Timestamp' }
                 ],
                 layoutCommon: {
@@ -409,7 +496,7 @@
                 },
 
                 initPlots() {
-                    const plots = ['gammaPlot', 'strikePlot', 'charmPlot', 'charmComparePlot', 'gammaHeatmap', 'charmHeatmap', 'vannaPlot', 'deltaPlot', 'speedPlot', 'gexLevelsPlot', 'callPutGexPlot', 'gexExpirationPlot', 'pcRatioPlot', 'oiHeatmap'];
+                    const plots = ['gammaPlot', 'strikePlot', 'charmPlot', 'charmComparePlot', 'vannaPlot', 'deltaPlot', 'speedPlot', 'gexLevelsPlot', 'callPutGexPlot', 'gexExpirationPlot', 'pcRatioPlot', 'ivSmilePlot', 'ivTermPlot', 'oiHeatmap'];
                     plots.forEach(id => {
                         const el = document.getElementById(id);
                         if (el) Plotly.newPlot(id, [], this.layoutCommon, { responsive: true, displayModeBar: false });
@@ -459,7 +546,48 @@
                         nearGex = near.gex;
                     }
                     this.stats[2].value = (nearGex / 1e9).toFixed(1) + 'B';
-                    this.stats[3].value = new Date().toLocaleTimeString();
+
+                    // IV ATM stat
+                    if (data.iv_stats) {
+                        const ivPct = (data.iv_stats.atm_iv * 100).toFixed(1);
+                        this.stats[3].value = ivPct + '%';
+                        const skewPct = (data.iv_stats.skew * 100).toFixed(1);
+                        this.stats[3].desc = `Skew: ${skewPct > 0 ? '+' : ''}${skewPct}%`;
+                    }
+
+                    this.stats[4].value = new Date().toLocaleTimeString();
+
+                    // --- History Log: compute Vanna Squeeze, Charm and push snapshot ---
+                    let vannaAtSpot = 0;
+                    if (data.vanna_profile?.net?.length) {
+                        const nearestVanna = data.vanna_profile.net.reduce((p, c) =>
+                            Math.abs(c.price - data.spot_price) < Math.abs(p.price - data.spot_price) ? c : p
+                        );
+                        vannaAtSpot = nearestVanna.vanna;
+                    }
+                    let charmAtSpot = 0;
+                    if (data.charm_profile?.net?.length) {
+                        const nearestCharm = data.charm_profile.net.reduce((p, c) =>
+                            Math.abs(c.price - data.spot_price) < Math.abs(p.price - data.spot_price) ? c : p
+                        );
+                        charmAtSpot = nearestCharm.charm;
+                    }
+                    const ivPctLog = data.iv_stats ? (data.iv_stats.atm_iv * 100) : 0;
+                    const skewPctLog = data.iv_stats ? (data.iv_stats.skew * 100) : 0;
+                    this.history.push({
+                        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                        spot: data.spot_price.toFixed(2),
+                        zeroGamma: data.zero_gamma ? data.zero_gamma.toFixed(2) : 'N/A',
+                        gex: (nearGex / 1e9).toFixed(2) + 'B',
+                        gexRaw: nearGex,
+                        iv: ivPctLog.toFixed(1) + '%',
+                        skew: (skewPctLog > 0 ? '+' : '') + skewPctLog.toFixed(1) + '%',
+                        skewRaw: skewPctLog,
+                        vanna: (vannaAtSpot / 1e6).toFixed(1) + 'M',
+                        vannaRaw: vannaAtSpot,
+                        charm: (charmAtSpot / 1e6).toFixed(1) + 'M',
+                        charmRaw: charmAtSpot
+                    });
 
                     const spotLine = {
                         type: 'line', x0: data.spot_price, x1: data.spot_price,
@@ -607,23 +735,7 @@
                     };
                     Plotly.react('charmComparePlot', [charmCall, charmPut], { ...this.layoutCommon, shapes: [spotLine], showlegend: true, legend: { font: { size: 9, color: '#94a3b8' } } });
 
-                    // 5. Gamma Heatmap
-                    if (data.gamma_surface) {
-                        const trace = {
-                            z: data.gamma_surface.values, x: data.gamma_surface.times, y: data.gamma_surface.prices,
-                            type: 'heatmap', colorscale: 'RdBu', reversescale: true, zmid: 0, showscale: false
-                        };
-                        Plotly.react('gammaHeatmap', [trace], { ...this.layoutCommon, xaxis: { title: 'Time' }, yaxis: { title: 'Price' } });
-                    }
 
-                    // 6. Charm Heatmap
-                    if (data.charm_surface) {
-                        const trace = {
-                            z: data.charm_surface.values, x: data.charm_surface.times, y: data.charm_surface.prices,
-                            type: 'heatmap', colorscale: 'Viridis', showscale: false
-                        };
-                        Plotly.react('charmHeatmap', [trace], { ...this.layoutCommon, xaxis: { title: 'Time' }, yaxis: { title: 'Price' } });
-                    }
 
                     // 7. Advanced Greeks
                     if (data.vanna_profile) {
@@ -671,7 +783,8 @@
                             ...this.layoutCommon,
                             xaxis: { title: 'Price Level', gridcolor: '#334155', range: [data.spot_price * 0.95, data.spot_price * 1.05] },
                             yaxis: { gridcolor: '#334155' },
-                            margin: { t: 20, r: 60, l: 100, b: 40 }
+                            margin: { t: 20, r: 60, l: 100, b: 40 },
+                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
                         });
                     }
 
@@ -704,7 +817,8 @@
                             yaxis: { title: 'GEX ($M)', gridcolor: '#334155' },
                             showlegend: true,
                             legend: { font: { size: 9, color: '#94a3b8' }, orientation: 'h', y: 1.1 },
-                            shapes: [{ type: 'line', x0: data.spot_price, x1: data.spot_price, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: 'white', width: 1, dash: 'dash' } }]
+                            shapes: [{ type: 'line', x0: data.spot_price, x1: data.spot_price, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: 'white', width: 1, dash: 'dash' } }],
+                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
                         });
                     }
 
@@ -738,7 +852,8 @@
                             ...this.layoutCommon,
                             xaxis: { title: 'Expiration', gridcolor: '#334155', tickangle: -45, tickfont: { size: 8 } },
                             yaxis: { title: 'GEX ($M)', gridcolor: '#334155' },
-                            margin: { t: 30, r: 10, l: 50, b: 80 }
+                            margin: { t: 30, r: 10, l: 50, b: 80 },
+                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
                         });
                     }
 
@@ -768,11 +883,70 @@
                                 { type: 'line', x0: data.spot_price, x1: data.spot_price, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: 'white', width: 1, dash: 'dash' } },
                                 { type: 'line', x0: 0, x1: 1, y0: 1, y1: 1, xref: 'paper', yref: 'y', line: { color: '#fbbf24', width: 1, dash: 'dot' } }
                             ],
-                            annotations: [{ x: 1.02, y: 1, xref: 'paper', yref: 'y', text: 'Équilibre', showarrow: false, font: { size: 9, color: '#fbbf24' } }]
+                            annotations: [{ x: 1.02, y: 1, xref: 'paper', yref: 'y', text: 'Équilibre', showarrow: false, font: { size: 9, color: '#fbbf24' } }],
+                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
                         });
                     }
 
-                    // 12. OI Heatmap
+                    // 12. IV Smile / Skew
+                    if (data.iv_smile?.length) {
+                        const smileStrikes = data.iv_smile;
+                        const callIvTrace = {
+                            x: smileStrikes.filter(s => s.call_iv).map(s => s.strike),
+                            y: smileStrikes.filter(s => s.call_iv).map(s => s.call_iv * 100),
+                            type: 'scatter', mode: 'lines+markers',
+                            name: 'Call IV',
+                            line: { color: '#3b82f6', width: 2 },
+                            marker: { size: 4 },
+                            hovertemplate: 'Strike: %{x}<br>Call IV: %{y:.1f}%<extra></extra>'
+                        };
+                        const putIvTrace = {
+                            x: smileStrikes.filter(s => s.put_iv).map(s => s.strike),
+                            y: smileStrikes.filter(s => s.put_iv).map(s => s.put_iv * 100),
+                            type: 'scatter', mode: 'lines+markers',
+                            name: 'Put IV',
+                            line: { color: '#ef4444', width: 2 },
+                            marker: { size: 4 },
+                            hovertemplate: 'Strike: %{x}<br>Put IV: %{y:.1f}%<extra></extra>'
+                        };
+                        Plotly.react('ivSmilePlot', [callIvTrace, putIvTrace], {
+                            ...this.layoutCommon,
+                            xaxis: { title: 'Strike', gridcolor: '#334155' },
+                            yaxis: { title: 'IV (%)', gridcolor: '#334155' },
+                            showlegend: true,
+                            legend: { font: { size: 9, color: '#94a3b8' }, orientation: 'h', y: 1.1 },
+                            shapes: [{ type: 'line', x0: data.spot_price, x1: data.spot_price, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: 'white', width: 1, dash: 'dash' } }],
+                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
+                        });
+                    }
+
+                    // 13. IV Term Structure
+                    if (data.iv_term_structure?.length) {
+                        const terms = data.iv_term_structure.slice(0, 20);
+                        const termTrace = {
+                            x: terms.map(t => `${t.expiration} (${t.dte}d)`),
+                            y: terms.map(t => t.avg_iv * 100),
+                            type: 'bar',
+                            marker: {
+                                color: terms.map((t, i, arr) => {
+                                    if (i === 0) return '#14b8a6';
+                                    return t.avg_iv < arr[i - 1].avg_iv ? '#ef4444' : '#14b8a6';
+                                })
+                            },
+                            hovertemplate: terms.map(t =>
+                                `Exp: ${t.expiration}<br>DTE: ${t.dte}<br>Avg IV: ${(t.avg_iv * 100).toFixed(1)}%<br>Call IV: ${(t.call_iv * 100).toFixed(1)}%<br>Put IV: ${(t.put_iv * 100).toFixed(1)}%<extra></extra>`
+                            )
+                        };
+                        Plotly.react('ivTermPlot', [termTrace], {
+                            ...this.layoutCommon,
+                            xaxis: { title: 'Expiration (DTE)', gridcolor: '#334155', tickangle: -45, tickfont: { size: 8 } },
+                            yaxis: { title: 'IV (%)', gridcolor: '#334155' },
+                            margin: { t: 20, r: 10, l: 50, b: 90 },
+                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
+                        });
+                    }
+
+                    // 14. OI Heatmap
                     if (data.oi_heatmap?.length) {
                         // Convert to heatmap format
                         const strikes = [...new Set(data.oi_heatmap.map(d => d.strike))].sort((a, b) => a - b);
@@ -801,7 +975,8 @@
                             xaxis: { title: 'Expiration', gridcolor: '#334155', tickangle: -45, tickfont: { size: 8 } },
                             yaxis: { title: 'Strike', gridcolor: '#334155' },
                             margin: { t: 20, r: 80, l: 60, b: 80 },
-                            shapes: [{ type: 'line', x0: 0, x1: 1, y0: data.spot_price, y1: data.spot_price, xref: 'paper', yref: 'y', line: { color: 'white', width: 2, dash: 'dash' } }]
+                            shapes: [{ type: 'line', x0: 0, x1: 1, y0: data.spot_price, y1: data.spot_price, xref: 'paper', yref: 'y', line: { color: 'white', width: 2, dash: 'dash' } }],
+                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
                         });
                     }
                 }
