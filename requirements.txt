@@ -12,3 +12,5 @@ alpha_vantage
 tastytrade
 flask
 flask-cors
+rich
+websockets

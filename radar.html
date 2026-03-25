@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Radar CVD — Live Dashboard</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0e17;
+            --surface: #111827;
+            --surface2: #1a2234;
+            --border: #1e2d45;
+            --text: #e2e8f0;
+            --text-dim: #64748b;
+            --green: #22c55e;
+            --green-dim: rgba(34, 197, 94, 0.15);
+            --red: #ef4444;
+            --red-dim: rgba(239, 68, 68, 0.15);
+            --blue: #3b82f6;
+            --blue-dim: rgba(59, 130, 246, 0.1);
+            --cyan: #06b6d4;
+            --yellow: #eab308;
+            --purple: #a855f7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.06) 0%, transparent 100%);
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-title .symbol {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--cyan);
+            font-size: 14px;
+            background: var(--blue-dim);
+            padding: 3px 10px;
+            border-radius: 6px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--red);
+            transition: background 0.3s;
+        }
+
+        .status-dot.connected {
+            background: var(--green);
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+        }
+
+        /* ── Cards ── */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            padding: 16px 24px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--blue);
+            opacity: 0.5;
+        }
+
+        .card-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+        }
+
+        .card-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .card-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .card-value.positive {
+            color: var(--green);
+        }
+
+        .card-value.negative {
+            color: var(--red);
+        }
+
+        .card-value.neutral {
+            color: var(--text);
+        }
+
+        .card-cvd::before {
+            background: var(--green);
+        }
+
+        .card-basis::before {
+            background: var(--purple);
+        }
+
+        .card-ratio::before {
+            background: var(--yellow);
+        }
+
+        /* ── Session bar ── */
+        .session-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 24px;
+            font-size: 12px;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .session-badge {
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .session-morning {
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--cyan);
+        }
+
+        .session-evening {
+            background: rgba(168, 85, 247, 0.15);
+            color: var(--purple);
+        }
+
+        .session-closed {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+        }
+
+        /* ── Table ── */
+        .table-container {
+            padding: 0 24px 24px;
+            flex: 1;
+        }
+
+        .table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+        }
+
+        .table-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        .table-count {
+            font-size: 12px;
+            color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+
+        .history-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .history-table th {
+            background: var(--surface2);
+            color: var(--text-dim);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 14px;
+            text-align: right;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .history-table th:first-child {
+            text-align: left;
+            border-radius: 8px 0 0 0;
+        }
+
+        .history-table th:last-child {
+            border-radius: 0 8px 0 0;
+        }
+
+        .history-table td {
+            padding: 8px 14px;
+            text-align: right;
+            border-bottom: 1px solid rgba(30, 45, 69, 0.5);
+            transition: background 0.3s;
+        }
+
+        .history-table td:first-child {
+            text-align: left;
+            color: var(--text-dim);
+        }
+
+        .history-table tbody tr {
+            transition: background 0.2s;
+        }
+
+        .history-table tbody tr:hover {
+            background: var(--blue-dim);
+        }
+
+        .history-table tbody tr.new-row {
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                background: rgba(59, 130, 246, 0.15);
+            }
+
+            to {
+                background: transparent;
+            }
+        }
+
+        .delta-up {
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        .delta-down {
+            color: var(--red);
+            font-weight: 600;
+        }
+
+        .delta-flat {
+            color: var(--text-dim);
+        }
+
+        .buy-high {
+            color: var(--green);
+        }
+
+        .buy-low {
+            color: var(--red);
+        }
+
+        .buy-neutral {
+            color: var(--text-dim);
+        }
+
+        .vol-high {
+            color: var(--yellow);
+            font-weight: 700;
+        }
+
+        .avg-block {
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .whale-up {
+            color: #4ade80;
+            font-weight: 700;
+        }
+
+        .whale-down {
+            color: var(--red);
+            font-weight: 700;
+        }
+
+        .whale-flat {
+            color: var(--text-dim);
+        }
+
+        /* ── Scroll wrapper ── */
+        .scroll-wrapper {
+            max-height: calc(100vh - 280px);
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .scroll-wrapper::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scroll-wrapper::-webkit-scrollbar-track {
+            background: var(--surface);
+        }
+
+        .scroll-wrapper::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .scroll-wrapper::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+
+        /* ── Reconnect overlay ── */
+        .reconnect-overlay {
+            display: none;
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--red);
+            color: var(--red);
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        .reconnect-overlay.visible {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">
+            ⚡ Radar CVD
+            <span class="symbol" id="es-symbol">---</span>
+        </div>
+        <div class="status-badge">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">Déconnecté</span>
+        </div>
+    </div>
+
+    <!-- Session -->
+    <div class="session-bar">
+        <div>
+            <span class="session-badge session-closed" id="session-badge">⛔ FERMÉ</span>
+            <span style="margin-left: 12px" id="clock">--:--:--</span>
+        </div>
+        <div id="trade-count">0 trades</div>
+    </div>
+
+    <!-- Cards -->
+    <div class="cards">
+        <div class="card">
+            <div class="card-label">/ES Mid</div>
+            <div class="card-value neutral" id="es-price">---</div>
+            <div class="card-sub" id="es-spread">--- × ---</div>
+        </div>
+        <div class="card card-cvd">
+            <div class="card-label">CVD</div>
+            <div class="card-value neutral" id="cvd-value">0</div>
+            <div class="card-sub" id="cvd-sub">---</div>
+        </div>
+        <div class="card card-basis">
+            <div class="card-label">Basis</div>
+            <div class="card-value neutral" id="basis-value">---</div>
+            <div class="card-sub" id="basis-type">---</div>
+        </div>
+        <div class="card card-ratio">
+            <div class="card-label">Buy / Sell</div>
+            <div class="card-value neutral" id="ratio-value">50% / 50%</div>
+            <div class="card-sub" id="spx-value">---</div>
+        </div>
+    </div>
+
+    <!-- History Table -->
+    <div class="table-container">
+        <div class="table-header">
+            <div class="table-title">📊 Historique</div>
+            <div class="table-count" id="table-count">0 snapshots</div>
+        </div>
+        <div class="scroll-wrapper" id="scroll-wrapper">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Heure</th>
+                        <th>/ES</th>
+                        <th>CVD</th>
+                        <th>ΔCVD</th>
+                        <th>VOL 30s</th>
+                        <th>AVG SIZE</th>
+                        <th>🐋 WHALE Δ</th>
+                        <th>Basis</th>
+                        <th>Buy%</th>
+                        <th>Trades</th>
+                    </tr>
+                </thead>
+                <tbody id="history-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Reconnect overlay -->
+    <div class="reconnect-overlay" id="reconnect-overlay">
+        ⚠ Déconnecté — reconnexion...
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════
+        // CONFIG
+        // ═══════════════════════════════════════
+        const WS_URL = 'ws://localhost:8765';
+        const RECONNECT_INTERVAL = 3000;
+
+        // ═══════════════════════════════════════
+        // STATE
+        // ═══════════════════════════════════════
+        let ws = null;
+        let reconnectTimer = null;
+        let snapshots = [];
+        let autoScroll = true;
+
+        // ═══════════════════════════════════════
+        // DOM REFS
+        // ═══════════════════════════════════════
+        const $ = id => document.getElementById(id);
+        const statusDot = $('status-dot');
+        const statusText = $('status-text');
+        const esSymbolEl = $('es-symbol');
+        const esPriceEl = $('es-price');
+        const esSpreadEl = $('es-spread');
+        const cvdValueEl = $('cvd-value');
+        const cvdSubEl = $('cvd-sub');
+        const basisValueEl = $('basis-value');
+        const basisTypeEl = $('basis-type');
+        const ratioValueEl = $('ratio-value');
+        const spxValueEl = $('spx-value');
+        const sessionBadge = $('session-badge');
+        const clockEl = $('clock');
+        const tradeCountEl = $('trade-count');
+        const historyBody = $('history-body');
+        const tableCount = $('table-count');
+        const scrollWrapper = $('scroll-wrapper');
+        const reconnectOverlay = $('reconnect-overlay');
+
+        // Track auto-scroll
+        scrollWrapper.addEventListener('scroll', () => {
+            const { scrollTop, scrollHeight, clientHeight } = scrollWrapper;
+            autoScroll = (scrollHeight - scrollTop - clientHeight) < 40;
+        });
+
+        // ═══════════════════════════════════════
+        // FORMATTING
+        // ═══════════════════════════════════════
+        function fmtNumber(n, decimals = 2) {
+            return n.toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        }
+        function fmtCVD(n) {
+            const sign = n > 0 ? '+' : '';
+            return sign + n.toLocaleString('fr-FR');
+        }
+        function fmtBasis(n) {
+            if (n === null || n === undefined) return '---';
+            const sign = n >= 0 ? '+' : '';
+            return sign + n.toFixed(2);
+        }
+
+        // ═══════════════════════════════════════
+        // UPDATE UI
+        // ═══════════════════════════════════════
+        function updateTick(d) {
+            // Symbol
+            if (d.es_symbol) esSymbolEl.textContent = d.es_symbol;
+
+            // /ES Price
+            if (d.es_mid > 0) {
+                esPriceEl.textContent = fmtNumber(d.es_mid);
+                esPriceEl.className = 'card-value neutral';
+                esSpreadEl.textContent = `${fmtNumber(d.es_bid)} × ${fmtNumber(d.es_ask)}`;
+            }
+
+            // CVD
+            const cvd = d.cvd || 0;
+            cvdValueEl.textContent = fmtCVD(cvd);
+            cvdValueEl.className = `card-value ${cvd > 0 ? 'positive' : cvd < 0 ? 'negative' : 'neutral'}`;
+
+            // Buy/Sell ratio
+            const buyPct = d.buy_pct || 50;
+            const sellPct = (100 - buyPct).toFixed(0);
+            ratioValueEl.textContent = `${buyPct.toFixed(0)}% / ${sellPct}%`;
+            ratioValueEl.className = `card-value ${buyPct >= 55 ? 'positive' : buyPct <= 45 ? 'negative' : 'neutral'}`;
+            cvdSubEl.textContent = `Buy ${buyPct.toFixed(0)}% / Sell ${sellPct}%`;
+
+            // Basis
+            if (d.basis !== null && d.basis !== undefined) {
+                basisValueEl.textContent = fmtBasis(d.basis);
+                basisValueEl.className = `card-value ${d.basis >= 0 ? 'positive' : 'negative'}`;
+                basisTypeEl.textContent = d.basis_type || '';
+            } else {
+                basisValueEl.textContent = '---';
+                basisValueEl.className = 'card-value neutral';
+                basisTypeEl.textContent = '';
+            }
+
+            // SPX
+            if (d.spx_mid && d.spx_mid > 0) {
+                spxValueEl.textContent = `SPX ${fmtNumber(d.spx_mid)}`;
+            }
+
+            // Session
+            const sess = d.session || 'closed';
+            sessionBadge.className = `session-badge session-${sess}`;
+            if (sess === 'morning') sessionBadge.textContent = '☀ MATIN (08h-14h)';
+            else if (sess === 'evening') sessionBadge.textContent = '🌙 SOIR (15h30-22h)';
+            else sessionBadge.textContent = '⛔ FERMÉ';
+
+            // Clock
+            if (d.time) clockEl.textContent = d.time + ' CET';
+
+            // Trade count
+            if (d.trade_count !== undefined) {
+                tradeCountEl.textContent = d.trade_count.toLocaleString('fr-FR') + ' trades';
+            }
+        }
+
+        function addSnapshot(d) {
+            snapshots.push(d);
+            tableCount.textContent = `${snapshots.length} snapshots`;
+
+            const row = document.createElement('tr');
+            row.classList.add('new-row');
+
+            // ΔCVD styling
+            let deltaClass = 'delta-flat';
+            let deltaText = '─ 0';
+            if (d.cvd_delta > 0) {
+                deltaClass = 'delta-up';
+                deltaText = `▲ +${d.cvd_delta.toLocaleString('fr-FR')}`;
+            } else if (d.cvd_delta < 0) {
+                deltaClass = 'delta-down';
+                deltaText = `▼ ${d.cvd_delta.toLocaleString('fr-FR')}`;
+            }
+
+            // CVD styling
+            const cvdClass = d.cvd > 0 ? 'delta-up' : d.cvd < 0 ? 'delta-down' : 'delta-flat';
+            const cvdText = fmtCVD(d.cvd);
+
+            // Buy% styling
+            const bp = d.buy_pct || 50;
+            const buyClass = bp >= 55 ? 'buy-high' : bp <= 45 ? 'buy-low' : 'buy-neutral';
+
+            // VOL 30s
+            const vol30 = d.vol_30s || 0;
+            const volClass = vol30 >= 5000 ? 'vol-high' : '';
+
+            // AVG SIZE
+            const avgSize = d.avg_size || 0;
+            const avgClass = avgSize >= 10.0 ? 'avg-block' : '';
+
+            // WHALE DELTA
+            const whaleDelta = d.whale_delta || 0;
+            let whaleClass = 'whale-flat';
+            let whaleText = '0';
+            if (whaleDelta > 0) {
+                whaleClass = 'whale-up';
+                whaleText = `+${whaleDelta.toLocaleString('fr-FR')}`;
+            } else if (whaleDelta < 0) {
+                whaleClass = 'whale-down';
+                whaleText = whaleDelta.toLocaleString('fr-FR');
+            }
+
+            row.innerHTML = `
+                <td>${d.time}</td>
+                <td>${d.es_mid > 0 ? fmtNumber(d.es_mid) : '---'}</td>
+                <td class="${cvdClass}">${cvdText}</td>
+                <td class="${deltaClass}">${deltaText}</td>
+                <td class="${volClass}">${vol30.toLocaleString('fr-FR')}</td>
+                <td class="${avgClass}">${avgSize.toFixed(1)}</td>
+                <td class="${whaleClass}">${whaleText}</td>
+                <td>${fmtBasis(d.basis)}</td>
+                <td class="${buyClass}">${bp.toFixed(0)}%</td>
+                <td>${(d.trades || 0).toLocaleString('fr-FR')}</td>
+            `;
+
+            historyBody.appendChild(row);
+
+            // Auto-scroll to bottom
+            if (autoScroll) {
+                setTimeout(() => {
+                    scrollWrapper.scrollTop = scrollWrapper.scrollHeight;
+                }, 50);
+            }
+
+            // Remove animation class after it plays
+            setTimeout(() => row.classList.remove('new-row'), 600);
+        }
+
+        function clearHistory() {
+            snapshots = [];
+            historyBody.innerHTML = '';
+            tableCount.textContent = '0 snapshots';
+        }
+
+        // ═══════════════════════════════════════
+        // WEBSOCKET
+        // ═══════════════════════════════════════
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                statusDot.classList.add('connected');
+                statusText.textContent = 'Connecté';
+                reconnectOverlay.classList.remove('visible');
+                if (reconnectTimer) {
+                    clearInterval(reconnectTimer);
+                    reconnectTimer = null;
+                }
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'tick') {
+                        updateTick(data);
+                    } else if (data.type === 'snapshot') {
+                        addSnapshot(data);
+                    } else if (data.type === 'reset') {
+                        clearHistory();
+                    } else if (data.type === 'history') {
+                        // Bulk load on connect
+                        clearHistory();
+                        if (data.snapshots) {
+                            data.snapshots.forEach(s => addSnapshot(s));
+                        }
+                    }
+                } catch (e) {
+                    console.error('Parse error:', e);
+                }
+            };
+
+            ws.onclose = () => {
+                statusDot.classList.remove('connected');
+                statusText.textContent = 'Déconnecté';
+                reconnectOverlay.classList.add('visible');
+                scheduleReconnect();
+            };
+
+            ws.onerror = () => {
+                ws.close();
+            };
+        }
+
+        function scheduleReconnect() {
+            if (reconnectTimer) return;
+            reconnectTimer = setInterval(() => {
+                if (!ws || ws.readyState === WebSocket.CLOSED) {
+                    connect();
+                }
+            }, RECONNECT_INTERVAL);
+        }
+
+        // Start
+        connect();
+    </script>
+</body>
+
+</html>
