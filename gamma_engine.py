@@ -172,6 +172,14 @@ class GammaEngine:
                 return levels[i] - profile[i] * (levels[i+1] - levels[i]) / (profile[i+1] - profile[i])
         return None
 
+    def find_vanna_flip(self, levels, profile):
+        """Finds the price level where Vanna Exposure flips sign."""
+        for i in range(len(profile)-1):
+            if (profile[i] < 0 and profile[i+1] > 0) or (profile[i] > 0 and profile[i+1] < 0):
+                # Linear interpolation
+                return float(levels[i] - profile[i] * (levels[i+1] - levels[i]) / (profile[i+1] - profile[i]))
+        return None
+
     def plot_profile(self, levels, profile, zero_gamma, output_path='output/gamma_profile.png'):
         """Generates a professional Gamma Profile plot."""
         plt.figure(figsize=(12, 7))
@@ -302,14 +310,19 @@ class GammaEngine:
         if self.options_df is None or self.spot_price is None:
             return None
         levels = np.linspace(self.spot_price * (1 - price_range_pct), self.spot_price * (1 + price_range_pct), n_points)
+        
         df = self.options_df
         
         c_vanna = self._vectorized_bs_vanna(levels, df['Strike'], df['T'], df['Call IV'])
         p_vanna = self._vectorized_bs_vanna(levels, df['Strike'], df['T'], df['Put IV'])
         
-        # Vanna Exp = Dealer is Long Calls / Short Puts? Usually clients buy calls and puts.
-        # Dealer Exposure = (Call GEX - Put GEX equivalent)
-        # We use the same sign convention as GEX: (Call - Put)
+        # Axe 1: Time-weighting. On pondère par sqrt(T * 365) au lieu d'exclure totalement.
+        # Cela stabilise l'influence des 0DTE (poids ~1) face aux expirations lointaines (poids > 1).
+        time_weights = np.sqrt(df['T'].values * 365.0)[:, np.newaxis]
+        
+        c_vanna *= time_weights
+        p_vanna *= time_weights
+        
         c_exp = (c_vanna * (df['Call OI'].values[:, np.newaxis]) * self.contract_size).sum(axis=0)
         p_exp = (p_vanna * (df['Put OI'].values[:, np.newaxis]) * self.contract_size * (-1)).sum(axis=0)
         
@@ -372,6 +385,11 @@ class GammaEngine:
             (strike_summary['Strike'] >= view_min) & 
             (strike_summary['Strike'] <= view_max)
         ]
+        
+        # --- NOISE FILTER: Hide strikes with insignificant GEX (< 15% of max) ---
+        if not strike_summary.empty:
+            max_abs_gex = strike_summary['Total GEX'].abs().max()
+            strike_summary = strike_summary[strike_summary['Total GEX'].abs() >= (max_abs_gex * 0.15)]
 
         # 2. Setup Figure - 2 Row Grid
         fig = make_subplots(

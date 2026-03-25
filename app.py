@@ -42,6 +42,8 @@ def get_engine_data():
     
     # 2b. Other Greek Profiles (compute once, reuse below)
     vanna_data = engine.get_vanna_profile(price_range_pct=0.1, n_points=100)
+    vanna_flip = engine.find_vanna_flip(vanna_data['levels'], vanna_data['net']) if vanna_data else None
+    
     delta_data = engine.get_delta_profile(price_range_pct=0.1, n_points=100)
     speed_data = engine.get_speed_profile(price_range_pct=0.1, n_points=100)
     
@@ -64,6 +66,13 @@ def get_engine_data():
         (strike_summary['Strike'] >= engine.spot_price * 0.85) & 
         (strike_summary['Strike'] <= engine.spot_price * 1.15)
     ]
+    
+    # --- NOISE FILTER: Hide strikes with insignificant GEX (< 15% of max) ---
+    if not strike_summary.empty:
+        max_abs_gex = strike_summary['Total GEX'].abs().max()
+        threshold = max_abs_gex * 0.15  # Keep bars >= 15% of largest wall
+        strike_summary = strike_summary[strike_summary['Total GEX'].abs() >= threshold]
+        
     strike_summary = strike_summary.sort_values('Strike')
     
     # Calculate Put/Call Ratio
@@ -87,6 +96,8 @@ def get_engine_data():
     
     exp_summary = df.groupby('Expiration Date').agg({
         'Total GEX': 'sum',
+        'Call GEX': 'sum',
+        'Put GEX': 'sum',
         'Call OI': 'sum',
         'Put OI': 'sum',
         'DTE': 'first'
@@ -207,6 +218,7 @@ def get_engine_data():
         "spot_price": float(engine.spot_price),
         "data_date": str(engine.data_date),
         "zero_gamma": float(zero_gamma) if zero_gamma else None,
+        "vanna_flip": float(vanna_flip) if vanna_flip else None,
         "gamma_profile": [
             {"price": float(p), "gex": float(g)} for p, g in zip(levels_gamma, total_gamma)
         ],
@@ -233,6 +245,8 @@ def get_engine_data():
                 "dte": int(row['DTE']),
                 "category": row['Category'],
                 "total_gex": float(row['Total GEX']),
+                "call_gex": float(row['Call GEX']),
+                "put_gex": float(row['Put GEX']),
                 "call_oi": float(row['Call OI']),
                 "put_oi": float(row['Put OI'])
             } for _, row in exp_summary.iterrows()

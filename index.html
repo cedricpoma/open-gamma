@@ -88,6 +88,7 @@
                             class="text-indigo-400">Gamma</span></span>
                 </div>
                 <div class="badge badge-ghost badge-sm mono opacity-50 px-2 ml-2">PLOTLY LIVE</div>
+                <div class="text-[10px] mono opacity-80 ml-4 font-bold text-slate-300" x-show="lastUpdate" x-text="'Mis à jour: ' + lastUpdate"></div>
             </div>
         </div>
         <div class="flex-none gap-2">
@@ -108,6 +109,19 @@
 
     <!-- Main Content -->
     <main class="p-4 max-w-full mx-auto space-y-3">
+
+        <!-- Killswitch Alert Banner -->
+        <div x-show="vannaKillswitch" x-transition class="bg-red-500/20 border border-red-500/50 rounded-xl p-3 flex items-center gap-3">
+            <div class="p-2 bg-red-500 rounded-lg">
+                <i data-lucide="siren" class="text-white w-5 h-5 animate-pulse"></i>
+            </div>
+            <div>
+                <h4 class="text-red-400 font-bold uppercase tracking-wider text-sm flex items-center gap-2">
+                    🚨 KILL SWITCH ACTIF : VANNA SQUEEZE <span class="badge badge-error badge-sm">NO SHORTS</span>
+                </h4>
+                <p class="text-xs text-red-200/70 mt-0.5">Vanna est positif et l'IV s'est écrasée de <span x-text="ivDropAmount"></span>% lors des 30 dernières minutes. Le Market Maker rachète ses Shorts mécaniquement.</p>
+            </div>
+        </div>
 
         <!-- Stats Row Compact -->
         <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -252,7 +266,7 @@
             </div>
         </div>
 
-        <!-- Expiration & Put/Call Ratio -->
+        <!-- Expiration (Half Width) -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
             <!-- GEX by Expiration -->
@@ -270,78 +284,11 @@
                 </div>
                 <div id="gexExpirationPlot" class="flex-grow w-full"></div>
             </div>
-
-            <!-- Put/Call Ratio by Strike -->
-            <div class="chart-container flex flex-col">
-                <div class="card-header border-red-500/10">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="scale" class="w-3 h-3 text-red-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">Put/Call Ratio</h3>
-                        <div class="tooltip tooltip-left sm:tooltip-bottom"
-                            data-tip="Ratio entre Open Interest Puts et Calls par strike. >1 = positionnement bearish (plus de puts). <1 = positionnement bullish (plus de calls). Ligne à 1 = équilibre.">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                </div>
-                <div id="pcRatioPlot" class="flex-grow w-full"></div>
-            </div>
         </div>
 
-        <!-- IV Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <!-- IV Charts Removed -->
 
-            <!-- IV Smile / Skew -->
-            <div class="chart-container flex flex-col">
-                <div class="card-header border-amber-500/10">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="mountain-snow" class="w-3 h-3 text-amber-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">IV Smile / Skew</h3>
-                        <div class="tooltip tooltip-right sm:tooltip-bottom"
-                            data-tip="Courbe de volatilité implicite par strike. La forme en sourire (smile) ou en biais (skew) révèle la prime de risque. Un skew prononcé = le marché paie cher pour se protéger à la baisse.">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                </div>
-                <div id="ivSmilePlot" class="flex-grow w-full"></div>
-            </div>
-
-            <!-- IV Term Structure -->
-            <div class="chart-container flex flex-col">
-                <div class="card-header border-teal-500/10">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="calendar-clock" class="w-3 h-3 text-teal-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">IV Term Structure</h3>
-                        <div class="tooltip tooltip-left sm:tooltip-bottom"
-                            data-tip="Structure par terme de la volatilité implicite par expiration. Normal = croissante (contango). Inversée = décroissante (backwardation) = stress de marché imminent.">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                </div>
-                <div id="ivTermPlot" class="flex-grow w-full"></div>
-            </div>
-        </div>
-
-        <!-- OI Heatmap (Full Width) -->
-        <div class="grid grid-cols-1 gap-3">
-            <div class="chart-container flex flex-col" style="height: 300px;">
-                <div class="card-header border-yellow-500/10">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="grid-3x3" class="w-3 h-3 text-yellow-400"></i>
-                        <h3 class="font-bold text-xs uppercase tracking-wide">Open Interest Heatmap</h3>
-                        <div class="tooltip tooltip-right sm:tooltip-bottom"
-                            data-tip="Carte de chaleur de l'Open Interest par Strike et Expiration. Les zones 'chaudes' indiquent une concentration massive de contrats qui peuvent agir comme des murs de support/résistance.">
-                            <i data-lucide="info"
-                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
-                        </div>
-                    </div>
-                    <div class="text-[10px] mono opacity-60">Strike × Expiration</div>
-                </div>
-                <div id="oiHeatmap" class="flex-grow w-full"></div>
-            </div>
-        </div>
+        <!-- OI Heatmap Removed -->
 
         <!-- ============================================ -->
         <!-- ADVANCED GREEKS (Collapsible, Less Used) -->
@@ -471,12 +418,15 @@
                 error: false,
                 errorMsg: '',
                 history: [],
+                lastUpdate: '',
+                vannaKillswitch: false,
+                ivDropAmount: '0.0',
                 stats: [
                     { label: 'SPX Spot', value: '--', desc: 'Live Quote', tooltip: 'Prix actuel de l\'indice S&P 500 utilisé pour les calculs d\'exposition.' },
-                    { label: 'Zero Gamma', value: '--', desc: 'Flip Level', color: 'text-emerald-400', tooltip: 'Le niveau où l\'exposition nette passe de positive à négative. Souvent une zone de pivot majeure.' },
-                    { label: 'Net GEX', value: '--', desc: 'Total Exposure', color: 'text-indigo-400', tooltip: 'Exposition Gamma totale. >0: Stabilise le marché (les MM achètent les baisses). <0: Accélère le marché (les MM vendent les baisses).' },
+                    { label: 'Zero Gamma', value: '--', desc: 'Distance: --', color: 'text-emerald-400', tooltip: 'Le niveau où l\'exposition nette passe de positive à négative. Souvent une zone de pivot majeure (Wash Zone).' },
+                    { label: 'Net GEX', value: '--', desc: 'Regime: --', color: 'text-indigo-400', tooltip: 'Exposition Gamma totale. >0: Stabilise le marche. <0: Accelere le marche.' },
                     { label: 'IV ATM', value: '--', desc: 'Implied Vol', color: 'text-amber-400', tooltip: 'Volatilité Implicite moyenne ATM pondérée par l\'OI. Mesure la volatilité attendue par le marché. Skew = différence entre IV Put OTM et IV Call OTM.' },
-                    { label: 'Last Update', value: '--', desc: 'Timestamp' }
+                    { label: 'Liquidity Walls', value: '--', desc: 'Gamma Ratio C/P: --', color: 'text-fuchsia-400', tooltip: 'Murs de liquidite massifs. Ratio Gamma C/P > 1 indique plus de Call GEX total (marche soutenu). < 1 indique plus de Put GEX (marche lourd).' }
                 ],
                 layoutCommon: {
                     paper_bgcolor: 'rgba(0,0,0,0)',
@@ -538,14 +488,23 @@
                 updatePlots(data) {
                     // Update Stats
                     this.stats[0].value = data.spot_price.toFixed(2);
-                    this.stats[1].value = data.zero_gamma ? data.zero_gamma.toFixed(2) : 'N/A';
+                    
+                    // Zero Gamma
+                    const zg = data.zero_gamma || 0;
+                    this.stats[1].value = zg ? zg.toFixed(2) : 'N/A';
+                    if (zg) {
+                        const dist = Math.round(data.spot_price - zg);
+                        this.stats[1].desc = `Distance: ${dist > 0 ? '+' : ''}${dist} pts`;
+                    }
 
+                    // Near GEX
                     let nearGex = 0;
                     if (data.gamma_profile?.length) {
                         const near = data.gamma_profile.reduce((p, c) => Math.abs(c.price - data.spot_price) < Math.abs(p.price - data.spot_price) ? c : p);
                         nearGex = near.gex;
                     }
                     this.stats[2].value = (nearGex / 1e9).toFixed(1) + 'B';
+                    this.stats[2].desc = `Regime: ${nearGex > 0 ? 'LONG GAMMA (+)' : 'SHORT GAMMA (-)'}`;
 
                     // IV ATM stat
                     if (data.iv_stats) {
@@ -555,7 +514,26 @@
                         this.stats[3].desc = `Skew: ${skewPct > 0 ? '+' : ''}${skewPct}%`;
                     }
 
-                    this.stats[4].value = new Date().toLocaleTimeString();
+                    // Liquidity Walls (Call Wall & Put Wall) & Gamma Ratio
+                    if (data.strike_breakdown?.length) {
+                        let callWallStr = 0, callWallVal = 0;
+                        let putWallStr = 0, putWallVal = 0;
+                        let totalCallGex = 0;
+                        let totalPutGex = 0;
+
+                        data.strike_breakdown.forEach(s => {
+                            if (s['Call GEX'] > callWallVal) { callWallVal = s['Call GEX']; callWallStr = s.Strike; }
+                            if (s['Put GEX'] < putWallVal) { putWallVal = s['Put GEX']; putWallStr = s.Strike; }
+                            totalCallGex += (s['Call GEX'] || 0);
+                            totalPutGex += Math.abs(s['Put GEX'] || 0);
+                        });
+                        
+                        this.stats[4].value = `C:${callWallStr} | P:${putWallStr}`;
+                        const ratio = totalPutGex > 0 ? (totalCallGex / totalPutGex).toFixed(2) : 'N/A';
+                        this.stats[4].desc = `Gamma Ratio C/P: ${ratio}`;
+                    }
+
+                    this.lastUpdate = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
                     // --- History Log: compute Vanna Squeeze, Charm and push snapshot ---
                     let vannaAtSpot = 0;
@@ -574,13 +552,18 @@
                     }
                     const ivPctLog = data.iv_stats ? (data.iv_stats.atm_iv * 100) : 0;
                     const skewPctLog = data.iv_stats ? (data.iv_stats.skew * 100) : 0;
+                    
+                    const currentTimeMs = new Date().getTime();
+                    
                     this.history.push({
                         time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                        timestampMs: currentTimeMs,
                         spot: data.spot_price.toFixed(2),
                         zeroGamma: data.zero_gamma ? data.zero_gamma.toFixed(2) : 'N/A',
                         gex: (nearGex / 1e9).toFixed(2) + 'B',
                         gexRaw: nearGex,
                         iv: ivPctLog.toFixed(1) + '%',
+                        ivRaw: ivPctLog,
                         skew: (skewPctLog > 0 ? '+' : '') + skewPctLog.toFixed(1) + '%',
                         skewRaw: skewPctLog,
                         vanna: (vannaAtSpot / 1e6).toFixed(1) + 'M',
@@ -588,6 +571,30 @@
                         charm: (charmAtSpot / 1e6).toFixed(1) + 'M',
                         charmRaw: charmAtSpot
                     });
+
+                    // Check Vanna Killswitch (Require Vanna>0 AND GEX<0)
+                    if (this.history.length > 1 && vannaAtSpot > 0 && nearGex < 0) {
+                        // Find the oldest snapshot within the last 30 minutes
+                        const thirtyMinsAgo = currentTimeMs - (30 * 60 * 1000);
+                        const validHistory = this.history.filter(h => h.timestampMs >= thirtyMinsAgo);
+                        
+                        if (validHistory.length > 0) {
+                            const oldestIv = validHistory[0].ivRaw;
+                            const ivDrop = oldestIv - ivPctLog;
+                            
+                            if (ivDrop >= 1.5) {
+                                this.vannaKillswitch = true;
+                                this.ivDropAmount = ivDrop.toFixed(1);
+                                this.stats[3].color = 'text-red-500 animate-pulse'; // Turn IV stat red
+                            } else {
+                                this.vannaKillswitch = false;
+                                this.stats[3].color = 'text-amber-400';
+                            }
+                        }
+                    } else {
+                        this.vannaKillswitch = false;
+                        this.stats[3].color = 'text-amber-400';
+                    }
 
                     const spotLine = {
                         type: 'line', x0: data.spot_price, x1: data.spot_price,
@@ -761,6 +768,7 @@
                         const levelsData = [
                             { label: 'Max Neg GEX', value: levels.max_negative_strike, color: '#ef4444', gex: levels.max_negative_gex },
                             { label: 'Zero Gamma', value: levels.zero_gamma, color: '#fbbf24', gex: 0 },
+                            { label: 'Vanna Flip', value: data.vanna_flip, color: '#eab308', gex: null },
                             { label: 'Spot', value: data.spot_price, color: '#ffffff', gex: null },
                             { label: 'Max Pos GEX', value: levels.max_positive_strike, color: '#10b981', gex: levels.max_positive_gex }
                         ].filter(d => d.value !== null);
@@ -826,159 +834,47 @@
                     if (data.gex_by_expiration?.length) {
                         const exps = data.gex_by_expiration.slice(0, 15); // Top 15 expirations
 
-                        // Color by category
-                        const categoryColors = {
-                            '0DTE': '#ef4444',
-                            '1DTE': '#f97316',
-                            'Weekly': '#fbbf24',
-                            'Monthly': '#10b981',
-                            'Quarterly+': '#6366f1'
-                        };
-
-                        const expTrace = {
+                        const callExpTrace = {
                             x: exps.map(e => e.expiration),
-                            y: exps.map(e => e.total_gex / 1e6),
+                            y: exps.map(e => (e.call_gex || 0) / 1e6),
                             type: 'bar',
-                            marker: { color: exps.map(e => categoryColors[e.category] || '#6366f1') },
-                            text: exps.map(e => e.category),
-                            textposition: 'outside',
-                            textfont: { size: 8, color: '#94a3b8' },
+                            name: 'Call GEX',
+                            marker: { color: '#3b82f6' }, // Blue
                             hovertemplate: exps.map(e =>
-                                `Date: ${e.expiration}<br>DTE: ${e.dte}<br>GEX: ${(e.total_gex / 1e6).toFixed(1)}M<br>Category: ${e.category}<extra></extra>`
+                                `Date: ${e.expiration}<br>DTE: ${e.dte}<br>Call GEX: ${((e.call_gex || 0) / 1e6).toFixed(1)}M<br>Category: ${e.category}<extra></extra>`
                             )
                         };
 
-                        Plotly.react('gexExpirationPlot', [expTrace], {
-                            ...this.layoutCommon,
-                            xaxis: { title: 'Expiration', gridcolor: '#334155', tickangle: -45, tickfont: { size: 8 } },
-                            yaxis: { title: 'GEX ($M)', gridcolor: '#334155' },
-                            margin: { t: 30, r: 10, l: 50, b: 80 },
-                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
-                        });
-                    }
-
-                    // 11. Put/Call Ratio by Strike
-                    if (data.strike_breakdown?.length) {
-                        const strikes = data.strike_breakdown.filter(s =>
-                            s.Strike >= data.spot_price * 0.95 && s.Strike <= data.spot_price * 1.05 && s.PC_Ratio > 0
-                        );
-
-                        const pcTrace = {
-                            x: strikes.map(s => s.Strike),
-                            y: strikes.map(s => s.PC_Ratio),
-                            type: 'scatter',
-                            mode: 'lines+markers',
-                            line: { color: '#a855f7', width: 2 },
-                            marker: { size: 6, color: strikes.map(s => s.PC_Ratio > 1 ? '#ef4444' : '#10b981') },
-                            hovertemplate: strikes.map(s =>
-                                `Strike: ${s.Strike}<br>P/C Ratio: ${s.PC_Ratio.toFixed(2)}<br>${s.PC_Ratio > 1 ? '🐻 Bearish' : '🐂 Bullish'}<extra></extra>`
-                            )
-                        };
-
-                        Plotly.react('pcRatioPlot', [pcTrace], {
-                            ...this.layoutCommon,
-                            xaxis: { title: 'Strike', gridcolor: '#334155' },
-                            yaxis: { title: 'Put/Call Ratio', gridcolor: '#334155' },
-                            shapes: [
-                                { type: 'line', x0: data.spot_price, x1: data.spot_price, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: 'white', width: 1, dash: 'dash' } },
-                                { type: 'line', x0: 0, x1: 1, y0: 1, y1: 1, xref: 'paper', yref: 'y', line: { color: '#fbbf24', width: 1, dash: 'dot' } }
-                            ],
-                            annotations: [{ x: 1.02, y: 1, xref: 'paper', yref: 'y', text: 'Équilibre', showarrow: false, font: { size: 9, color: '#fbbf24' } }],
-                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
-                        });
-                    }
-
-                    // 12. IV Smile / Skew
-                    if (data.iv_smile?.length) {
-                        const smileStrikes = data.iv_smile;
-                        const callIvTrace = {
-                            x: smileStrikes.filter(s => s.call_iv).map(s => s.strike),
-                            y: smileStrikes.filter(s => s.call_iv).map(s => s.call_iv * 100),
-                            type: 'scatter', mode: 'lines+markers',
-                            name: 'Call IV',
-                            line: { color: '#3b82f6', width: 2 },
-                            marker: { size: 4 },
-                            hovertemplate: 'Strike: %{x}<br>Call IV: %{y:.1f}%<extra></extra>'
-                        };
-                        const putIvTrace = {
-                            x: smileStrikes.filter(s => s.put_iv).map(s => s.strike),
-                            y: smileStrikes.filter(s => s.put_iv).map(s => s.put_iv * 100),
-                            type: 'scatter', mode: 'lines+markers',
-                            name: 'Put IV',
-                            line: { color: '#ef4444', width: 2 },
-                            marker: { size: 4 },
-                            hovertemplate: 'Strike: %{x}<br>Put IV: %{y:.1f}%<extra></extra>'
-                        };
-                        Plotly.react('ivSmilePlot', [callIvTrace, putIvTrace], {
-                            ...this.layoutCommon,
-                            xaxis: { title: 'Strike', gridcolor: '#334155' },
-                            yaxis: { title: 'IV (%)', gridcolor: '#334155' },
-                            showlegend: true,
-                            legend: { font: { size: 9, color: '#94a3b8' }, orientation: 'h', y: 1.1 },
-                            shapes: [{ type: 'line', x0: data.spot_price, x1: data.spot_price, y0: 0, y1: 1, xref: 'x', yref: 'paper', line: { color: 'white', width: 1, dash: 'dash' } }],
-                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
-                        });
-                    }
-
-                    // 13. IV Term Structure
-                    if (data.iv_term_structure?.length) {
-                        const terms = data.iv_term_structure.slice(0, 20);
-                        const termTrace = {
-                            x: terms.map(t => `${t.expiration} (${t.dte}d)`),
-                            y: terms.map(t => t.avg_iv * 100),
+                        const putExpTrace = {
+                            x: exps.map(e => e.expiration),
+                            y: exps.map(e => (e.put_gex || 0) / 1e6),
                             type: 'bar',
-                            marker: {
-                                color: terms.map((t, i, arr) => {
-                                    if (i === 0) return '#14b8a6';
-                                    return t.avg_iv < arr[i - 1].avg_iv ? '#ef4444' : '#14b8a6';
-                                })
-                            },
-                            hovertemplate: terms.map(t =>
-                                `Exp: ${t.expiration}<br>DTE: ${t.dte}<br>Avg IV: ${(t.avg_iv * 100).toFixed(1)}%<br>Call IV: ${(t.call_iv * 100).toFixed(1)}%<br>Put IV: ${(t.put_iv * 100).toFixed(1)}%<extra></extra>`
+                            name: 'Put GEX',
+                            marker: { color: '#ef4444' }, // Red
+                            hovertemplate: exps.map(e =>
+                                `Date: ${e.expiration}<br>DTE: ${e.dte}<br>Put GEX: ${((e.put_gex || 0) / 1e6).toFixed(1)}M<extra></extra>`
                             )
                         };
-                        Plotly.react('ivTermPlot', [termTrace], {
+
+                        Plotly.react('gexExpirationPlot', [callExpTrace, putExpTrace], {
                             ...this.layoutCommon,
-                            xaxis: { title: 'Expiration (DTE)', gridcolor: '#334155', tickangle: -45, tickfont: { size: 8 } },
-                            yaxis: { title: 'IV (%)', gridcolor: '#334155' },
-                            margin: { t: 20, r: 10, l: 50, b: 90 },
+                            barmode: 'relative',
+                            xaxis: { title: 'Expiration', gridcolor: '#334155', tickangle: -45, tickfont: { size: 8 }, type: 'category' },
+                            yaxis: { title: 'GEX ($M)', gridcolor: '#334155' },
+                            margin: { t: 50, r: 10, l: 50, b: 80 },
+                            showlegend: true,
+                            legend: { font: { size: 9, color: '#94a3b8' }, orientation: 'h', yanchor: 'bottom', y: 1.05, xanchor: 'center', x: 0.5 },
                             hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
                         });
                     }
 
-                    // 14. OI Heatmap
-                    if (data.oi_heatmap?.length) {
-                        // Convert to heatmap format
-                        const strikes = [...new Set(data.oi_heatmap.map(d => d.strike))].sort((a, b) => a - b);
-                        const expirations = [...new Set(data.oi_heatmap.map(d => d.expiration))].sort();
+                    // 11. Put/Call Ratio (Supprimé)
 
-                        const zValues = strikes.map(strike =>
-                            expirations.map(exp => {
-                                const point = data.oi_heatmap.find(d => d.strike === strike && d.expiration === exp);
-                                return point ? point.total_oi : 0;
-                            })
-                        );
+                    // 12. IV Smile / Skew (Supprimé)
 
-                        const oiTrace = {
-                            z: zValues,
-                            x: expirations,
-                            y: strikes,
-                            type: 'heatmap',
-                            colorscale: 'YlOrRd',
-                            showscale: true,
-                            colorbar: { title: 'OI', titleside: 'right', tickfont: { size: 9 } },
-                            hovertemplate: 'Strike: %{y}<br>Exp: %{x}<br>OI: %{z:,.0f}<extra></extra>'
-                        };
+                    // 13. IV Term Structure (Supprimé)
 
-                        Plotly.react('oiHeatmap', [oiTrace], {
-                            ...this.layoutCommon,
-                            xaxis: { title: 'Expiration', gridcolor: '#334155', tickangle: -45, tickfont: { size: 8 } },
-                            yaxis: { title: 'Strike', gridcolor: '#334155' },
-                            margin: { t: 20, r: 80, l: 60, b: 80 },
-                            shapes: [{ type: 'line', x0: 0, x1: 1, y0: data.spot_price, y1: data.spot_price, xref: 'paper', yref: 'y', line: { color: 'white', width: 2, dash: 'dash' } }],
-                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
-                        });
-                    }
+                    // 14. OI Heatmap (Supprimé)
                 }
             }
         }
