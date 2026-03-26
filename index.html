@@ -537,8 +537,8 @@
 
                     // --- History Log: compute Vanna Squeeze, Charm and push snapshot ---
                     let vannaAtSpot = 0;
-                    if (data.vanna_profile?.net?.length) {
-                        const nearestVanna = data.vanna_profile.net.reduce((p, c) =>
+                    if (data.vanna_profile_intra?.net?.length) {
+                        const nearestVanna = data.vanna_profile_intra.net.reduce((p, c) =>
                             Math.abs(c.price - data.spot_price) < Math.abs(p.price - data.spot_price) ? c : p
                         );
                         vannaAtSpot = nearestVanna.vanna;
@@ -768,7 +768,8 @@
                         const levelsData = [
                             { label: 'Max Neg GEX', value: levels.max_negative_strike, color: '#ef4444', gex: levels.max_negative_gex },
                             { label: 'Zero Gamma', value: levels.zero_gamma, color: '#fbbf24', gex: 0 },
-                            { label: 'Vanna Flip', value: data.vanna_flip, color: '#eab308', gex: null },
+                            { label: 'Vanna Flip (Macro)', value: data.vanna_flip_macro, color: '#a16207', gex: null }, // Darker gold
+                            { label: 'Vanna Flip (Intra)', value: data.vanna_flip_intra, color: '#fde047', gex: null }, // Bright yellow
                             { label: 'Spot', value: data.spot_price, color: '#ffffff', gex: null },
                             { label: 'Max Pos GEX', value: levels.max_positive_strike, color: '#10b981', gex: levels.max_positive_gex }
                         ].filter(d => d.value !== null);
@@ -789,7 +790,7 @@
 
                         Plotly.react('gexLevelsPlot', [levelsTrace], {
                             ...this.layoutCommon,
-                            xaxis: { title: 'Price Level', gridcolor: '#334155', range: [data.spot_price * 0.95, data.spot_price * 1.05] },
+                            xaxis: { title: 'Price Level', gridcolor: '#334155', range: [data.spot_price * 0.90, data.spot_price * 1.10] },
                             yaxis: { gridcolor: '#334155' },
                             margin: { t: 20, r: 60, l: 100, b: 40 },
                             hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }

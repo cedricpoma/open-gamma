@@ -305,13 +305,19 @@ class GammaEngine:
             'put_charm': put_charm_exp
         }
 
-    def get_vanna_profile(self, price_range_pct=0.1, n_points=100):
+    def get_vanna_profile(self, price_range_pct=0.1, n_points=100, max_dte=None):
         """Calculates Vanna Exposure profile (Net, Call, Put)."""
         if self.options_df is None or self.spot_price is None:
             return None
         levels = np.linspace(self.spot_price * (1 - price_range_pct), self.spot_price * (1 + price_range_pct), n_points)
         
         df = self.options_df
+        
+        # Filtre optionnel par DTE (ex: pour le Day Trading)
+        if max_dte is not None:
+            df = df[(df['T'] * 365.0) <= max_dte]
+            if df.empty:
+                return None
         
         c_vanna = self._vectorized_bs_vanna(levels, df['Strike'], df['T'], df['Call IV'])
         p_vanna = self._vectorized_bs_vanna(levels, df['Strike'], df['T'], df['Put IV'])

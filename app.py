@@ -41,8 +41,11 @@ def get_engine_data():
     charm_data = engine.get_charm_profile(price_range_pct=0.1, n_points=100)
     
     # 2b. Other Greek Profiles (compute once, reuse below)
-    vanna_data = engine.get_vanna_profile(price_range_pct=0.1, n_points=100)
-    vanna_flip = engine.find_vanna_flip(vanna_data['levels'], vanna_data['net']) if vanna_data else None
+    vanna_data_macro = engine.get_vanna_profile(price_range_pct=0.1, n_points=100, max_dte=None)
+    vanna_flip_macro = engine.find_vanna_flip(vanna_data_macro['levels'], vanna_data_macro['net']) if vanna_data_macro else None
+    
+    vanna_data_intra = engine.get_vanna_profile(price_range_pct=0.1, n_points=100, max_dte=3)
+    vanna_flip_intra = engine.find_vanna_flip(vanna_data_intra['levels'], vanna_data_intra['net']) if vanna_data_intra else None
     
     delta_data = engine.get_delta_profile(price_range_pct=0.1, n_points=100)
     speed_data = engine.get_speed_profile(price_range_pct=0.1, n_points=100)
@@ -218,7 +221,8 @@ def get_engine_data():
         "spot_price": float(engine.spot_price),
         "data_date": str(engine.data_date),
         "zero_gamma": float(zero_gamma) if zero_gamma else None,
-        "vanna_flip": float(vanna_flip) if vanna_flip else None,
+        "vanna_flip_macro": float(vanna_flip_macro) if vanna_flip_macro else None,
+        "vanna_flip_intra": float(vanna_flip_intra) if vanna_flip_intra else None,
         "gamma_profile": [
             {"price": float(p), "gex": float(g)} for p, g in zip(levels_gamma, total_gamma)
         ],
@@ -228,7 +232,10 @@ def get_engine_data():
             "put": [{"price": float(p), "charm": float(c)} for p, c in zip(charm_data['levels'], charm_data['put_charm'])]
         },
         "vanna_profile": {
-            "net": [{"price": float(p), "vanna": float(v)} for p, v in zip(vanna_data['levels'], vanna_data['net'])]
+            "net": [{"price": float(p), "vanna": float(v)} for p, v in zip(vanna_data_macro['levels'], vanna_data_macro['net'])]
+        },
+        "vanna_profile_intra": {
+            "net": [{"price": float(p), "vanna": float(v)} for p, v in zip(vanna_data_intra['levels'], vanna_data_intra['net'])] if vanna_data_intra else []
         },
         "delta_profile": {
             "net": [{"price": float(p), "delta": float(d)} for p, d in zip(delta_data['levels'], delta_data['net'])]
