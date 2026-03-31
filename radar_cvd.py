@@ -48,6 +48,8 @@ from tastytrade.instruments import Future
 
 import websockets
 from websockets.asyncio.server import serve as ws_serve
+import numpy as np
+import pandas as pd
 
 # ═══════════════════════════════════════════════════════════════
 # CONSTANTES
@@ -180,6 +182,56 @@ def get_cvd_reset_time() -> dtime:
     elif session == "evening":
         return EVENING_CVD_RESET
     return MORNING_CVD_RESET
+
+
+# ═══════════════════════════════════════════════════════════════
+# STATISTIQUES (Hurst Exponent)
+# ═══════════════════════════════════════════════════════════════
+
+def calculate_hurst(series: list[float]) -> float:
+    """Calcul simplifié de l'exposant de Hurst (Rescaled Range).
+    Nécessite au moins 20 points pour être significatif.
+    """
+    if len(series) < 20:
+        return 0.5  # Valeur neutre par défaut
+    
+    vals = np.array(series)
+    # On travaille sur les deltas (variations) pour le Hurst
+    data = np.diff(vals)
+    if len(data) < 10:
+        return 0.5
+
+    def get_rs(chunk):
+        if len(chunk) < 2: return 0
+        mean_adj = chunk - np.mean(chunk)
+        cum_sum = np.cumsum(mean_adj)
+        r = np.max(cum_sum) - np.min(cum_sum)
+        s = np.std(chunk)
+        return r / s if s > 0 else 0
+
+    # On utilise plusieurs échelles (n)
+    n_vals = [len(data), len(data)//2, len(data)//4]
+    n_vals = [n for n in n_vals if n >= 4]
+    
+    rs_vals = []
+    for n in n_vals:
+        # On découpe en blocs de taille n et on moyenne le R/S
+        chunks = [data[i:i+n] for i in range(0, len(data), n) if len(data[i:i+n]) >= 4]
+        if not chunks: continue
+        avg_rs = np.mean([get_rs(c) for c in chunks])
+        if avg_rs > 0:
+            rs_vals.append((n, avg_rs))
+            
+    if len(rs_vals) < 2:
+        return 0.5
+        
+    # Régression linéaire ln(R/S) vs ln(n)
+    x = np.log([v[0] for v in rs_vals])
+    y = np.log([v[1] for v in rs_vals])
+    poly = np.polyfit(x, y, 1)
+    
+    # L'exposant H est la pente, clampé entre 0 et 1
+    return float(np.clip(poly[0], 0.0, 1.0))
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -433,6 +485,7 @@ def take_snapshot(engine: CVDEngine, history: deque, last_cvd: list) -> dict:
         "vol_30s": vol_30s,
         "avg_size": avg_size,
         "whale_delta": whale_delta,
+        "hurst": calculate_hurst([s['cvd'] for s in history] + [int(engine.cvd)])
     }
     history.append(snapshot)
 

@@ -70,12 +70,7 @@ def get_engine_data():
         (strike_summary['Strike'] <= engine.spot_price * 1.15)
     ]
     
-    # --- NOISE FILTER: Hide strikes with insignificant GEX (< 15% of max) ---
-    if not strike_summary.empty:
-        max_abs_gex = strike_summary['Total GEX'].abs().max()
-        threshold = max_abs_gex * 0.15  # Keep bars >= 15% of largest wall
-        strike_summary = strike_summary[strike_summary['Total GEX'].abs() >= threshold]
-        
+
     strike_summary = strike_summary.sort_values('Strike')
     
     # Calculate Put/Call Ratio

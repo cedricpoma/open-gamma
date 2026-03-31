@@ -341,6 +341,20 @@
             color: var(--text-dim);
         }
 
+        .hurst-high {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .hurst-low {
+            color: var(--red);
+            font-weight: 700;
+        }
+
+        .hurst-mid {
+            color: var(--text-dim);
+        }
+
         /* ── Scroll wrapper ── */
         .scroll-wrapper {
             max-height: calc(100vh - 280px);
@@ -454,6 +468,7 @@
                         <th>VOL 30s</th>
                         <th>AVG SIZE</th>
                         <th>🐋 WHALE Δ</th>
+                        <th>Hurst</th>
                         <th>Basis</th>
                         <th>Buy%</th>
                         <th>Trades</th>
@@ -633,6 +648,12 @@
                 whaleText = whaleDelta.toLocaleString('fr-FR');
             }
 
+            // HURST styling
+            const h = d.hurst || 0.5;
+            let hurstClass = 'hurst-mid';
+            if (h >= 0.6) hurstClass = 'hurst-high';
+            else if (h <= 0.4) hurstClass = 'hurst-low';
+
             row.innerHTML = `
                 <td>${d.time}</td>
                 <td>${d.es_mid > 0 ? fmtNumber(d.es_mid) : '---'}</td>
@@ -641,6 +662,7 @@
                 <td class="${volClass}">${vol30.toLocaleString('fr-FR')}</td>
                 <td class="${avgClass}">${avgSize.toFixed(1)}</td>
                 <td class="${whaleClass}">${whaleText}</td>
+                <td class="${hurstClass}">${h.toFixed(2)}</td>
                 <td>${fmtBasis(d.basis)}</td>
                 <td class="${buyClass}">${bp.toFixed(0)}%</td>
                 <td>${(d.trades || 0).toLocaleString('fr-FR')}</td>

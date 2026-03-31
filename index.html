@@ -266,7 +266,7 @@
             </div>
         </div>
 
-        <!-- Expiration (Half Width) -->
+        <!-- Expiration & Open Interest (Half Width) -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
             <!-- GEX by Expiration -->
@@ -283,6 +283,22 @@
                     </div>
                 </div>
                 <div id="gexExpirationPlot" class="flex-grow w-full"></div>
+            </div>
+
+            <!-- Open Interest by Strike (NEW) -->
+            <div class="chart-container flex flex-col">
+                <div class="card-header border-cyan-500/10">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="bar-chart" class="w-3 h-3 text-cyan-400"></i>
+                        <h3 class="font-bold text-xs uppercase tracking-wide">Open Interest by Strike</h3>
+                        <div class="tooltip tooltip-left sm:tooltip-bottom"
+                            data-tip="Nombre total de contrats ouverts par strike. Contrairement au GEX, l'OI est statique et montre les 'murs' de liquidité où le marché pourrait se stabiliser même si le prix est loin.">
+                            <i data-lucide="info"
+                                class="w-3 h-3 opacity-30 hover:opacity-100 cursor-help transition-opacity"></i>
+                        </div>
+                    </div>
+                </div>
+                <div id="oiPlot" class="flex-grow w-full"></div>
             </div>
         </div>
 
@@ -446,7 +462,7 @@
                 },
 
                 initPlots() {
-                    const plots = ['gammaPlot', 'strikePlot', 'charmPlot', 'charmComparePlot', 'vannaPlot', 'deltaPlot', 'speedPlot', 'gexLevelsPlot', 'callPutGexPlot', 'gexExpirationPlot', 'pcRatioPlot', 'ivSmilePlot', 'ivTermPlot', 'oiHeatmap'];
+                    const plots = ['gammaPlot', 'strikePlot', 'charmPlot', 'charmComparePlot', 'vannaPlot', 'deltaPlot', 'speedPlot', 'gexLevelsPlot', 'callPutGexPlot', 'gexExpirationPlot', 'oiPlot', 'pcRatioPlot', 'ivSmilePlot', 'ivTermPlot', 'oiHeatmap'];
                     plots.forEach(id => {
                         const el = document.getElementById(id);
                         if (el) Plotly.newPlot(id, [], this.layoutCommon, { responsive: true, displayModeBar: false });
@@ -612,25 +628,24 @@
                     };
                     Plotly.react('gammaPlot', [gammaTrace], { ...this.layoutCommon, shapes: [spotLine], yaxis: { title: 'GEX ($B)', gridcolor: '#334155' } });
 
-                    // 2. Strike - Amélioré avec filtre ±5% du spot et capping des valeurs extrêmes
+                    // 2. Strike - Amélioré avec capping des valeurs extrêmes et débruitage
                     const spotPrice = data.spot_price;
-                    const rangePercent = 0.05; // ±5% du spot
-                    const minStrike = spotPrice * (1 - rangePercent);
-                    const maxStrike = spotPrice * (1 + rangePercent);
+                    
+                    // Débruitage : on filtre les strikes insignifiants (moins de 0.5% du GEX max)
+                    // pour éviter de polluer le graphique sur les grosses journées d'expiration.
+                    let rawStrikes = data.strike_breakdown || [];
+                    const maxAbsTotal = Math.max(...rawStrikes.map(s => Math.abs(s['Total GEX'] || 0)), 1);
+                    const noiseFloor = maxAbsTotal * 0.005; 
 
-                    // Filtrer les strikes dans la plage ±5% du spot
-                    const limit = Math.max(...data.strike_breakdown.map(s => Math.abs(s['Total GEX']))) * 0.00001;
-                    let strikes = data.strike_breakdown.filter(s =>
-                        Math.abs(s['Total GEX']) > limit &&
-                        s.Strike >= minStrike &&
-                        s.Strike <= maxStrike
+                    let strikes = rawStrikes.filter(s =>
+                        Math.abs(s['Total GEX']) > noiseFloor
                     );
 
-                    // Calculer le cap basé sur le percentile 95 (exclure les outliers)
+                    // Calculer le cap basé sur le percentile 98 (plus conservateur que 95)
                     const allGexValues = strikes.map(s => Math.abs(s['Total GEX'] / 1e6)).sort((a, b) => a - b);
-                    const p95Index = Math.floor(allGexValues.length * 0.95);
-                    const capValue = allGexValues[p95Index] || Math.max(...allGexValues);
-                    const cappingThreshold = capValue * 1.5; // Cap à 1.5x le P95
+                    const p98Index = Math.floor(allGexValues.length * 0.98);
+                    const capValue = allGexValues[p98Index] || Math.max(...allGexValues) || 1;
+                    const cappingThreshold = capValue * 1.5; 
 
                     // Appliquer le capping et préparer les données
                     const cappedData = strikes.map(s => {
@@ -653,12 +668,13 @@
                         marker: {
                             color: cappedData.map(d => d.displayValue >= 0 ? '#3b82f6' : '#ef4444'),
                             line: {
-                                color: cappedData.map(d => d.isCapped ? '#ffffff' : 'transparent'),
-                                width: cappedData.map(d => d.isCapped ? 2 : 0)
+                                // Bordure dorée subtile au lieu de blanc agressif
+                                color: cappedData.map(d => d.isCapped ? '#fbbf24' : 'transparent'),
+                                width: cappedData.map(d => d.isCapped ? 1.5 : 0)
                             }
                         },
                         name: 'Net GEX',
-                        text: cappedData.map(d => d.isCapped ? `◀ ${d.rawValue.toFixed(1)}M` : ''),
+                        text: cappedData.map(d => d.isCapped ? `◀ ${d.rawValue.toFixed(0)}M` : ''),
                         textposition: 'outside',
                         textfont: { size: 9, color: '#fbbf24' },
                         hovertemplate: cappedData.map(d =>
@@ -693,7 +709,7 @@
                         },
                         yaxis: {
                             gridcolor: '#334155',
-                            title: `Strikes (${minStrike.toFixed(0)} - ${maxStrike.toFixed(0)})`
+                            title: 'Strikes (tous)'
                         },
                         shapes: [{
                             type: 'line', x0: 0, x1: 1, y0: spotPrice, y1: spotPrice,
@@ -800,7 +816,7 @@
                     // 9. Call vs Put GEX (Stacked Bar)
                     if (data.strike_breakdown?.length) {
                         const strikes = data.strike_breakdown.filter(s =>
-                            s.Strike >= data.spot_price * 0.97 && s.Strike <= data.spot_price * 1.03
+                            s.Strike >= data.spot_price * 0.95 && s.Strike <= data.spot_price * 1.05
                         );
 
                         const callTrace = {
@@ -808,7 +824,9 @@
                             y: strikes.map(s => (s['Call GEX'] || 0) / 1e6),
                             type: 'bar',
                             name: 'Call GEX',
-                            marker: { color: '#3b82f6' }
+                            marker: { color: '#3b82f6' },
+                            customdata: strikes.map(s => s['Call OI'] || 0),
+                            hovertemplate: 'Strike: %{x}<br>Call GEX: %{y:.1f}M<br>Call OI: %{customdata:,}<extra></extra>'
                         };
 
                         const putTrace = {
@@ -816,7 +834,9 @@
                             y: strikes.map(s => (s['Put GEX'] || 0) / 1e6),
                             type: 'bar',
                             name: 'Put GEX',
-                            marker: { color: '#ef4444' }
+                            marker: { color: '#ef4444' },
+                            customdata: strikes.map(s => s['Put OI'] || 0),
+                            hovertemplate: 'Strike: %{x}<br>Put GEX: %{y:.1f}M<br>Put OI: %{customdata:,}<extra></extra>'
                         };
 
                         Plotly.react('callPutGexPlot', [callTrace, putTrace], {
@@ -865,6 +885,41 @@
                             margin: { t: 50, r: 10, l: 50, b: 80 },
                             showlegend: true,
                             legend: { font: { size: 9, color: '#94a3b8' }, orientation: 'h', yanchor: 'bottom', y: 1.05, xanchor: 'center', x: 0.5 },
+                            hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
+                        });
+                    }
+
+                    // 11. Open Interest Plot (Side-by-Side)
+                    if (data.strike_breakdown?.length) {
+                        // Show strikes in a wider range to catch the walls (10%)
+                        const oiStrikes = data.strike_breakdown.filter(s => 
+                            s.Strike >= data.spot_price * 0.90 && s.Strike <= data.spot_price * 1.10
+                        );
+
+                        const callOiTrace = {
+                            x: oiStrikes.map(s => s.Strike),
+                            y: oiStrikes.map(s => s['Call OI'] || 0),
+                            type: 'bar', name: 'Call OI', marker: { color: '#3b82f6', opacity: 0.8 },
+                            hovertemplate: 'Strike: %{x}<br>Call OI: %{y:,}<extra></extra>'
+                        };
+                        const putOiTrace = {
+                            x: oiStrikes.map(s => s.Strike),
+                            y: oiStrikes.map(s => s['Put OI'] || 0),
+                            type: 'bar', name: 'Put OI', marker: { color: '#ef4444', opacity: 0.8 },
+                            hovertemplate: 'Strike: %{x}<br>Put OI: %{y:,}<extra></extra>'
+                        };
+
+                        Plotly.react('oiPlot', [callOiTrace, putOiTrace], {
+                            ...this.layoutCommon, 
+                            barmode: 'group',
+                            xaxis: { title: 'Strike', gridcolor: '#334155' },
+                            yaxis: { title: 'Open Interest', gridcolor: '#334155' },
+                            showlegend: true, 
+                            legend: { font: { size: 9, color: '#94a3b8' }, orientation: 'h', y: 1.1 },
+                            shapes: [{ 
+                                type: 'line', x0: data.spot_price, x1: data.spot_price, y0: 0, y1: 1, xref: 'x', yref: 'paper', 
+                                line: { color: 'white', width: 1, dash: 'dash' } 
+                            }],
                             hoverlabel: { bgcolor: 'white', font: { color: '#0f172a', size: 12 }, bordercolor: '#334155' }
                         });
                     }
